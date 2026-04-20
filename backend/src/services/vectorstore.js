@@ -60,11 +60,12 @@ async function getCollection() {
 
 async function initializeChroma() {
   try {
+    logger.info(`Initializing ChromaDB with config`, { 
+      persistentPath: config.chroma.persistentPath || '(not set)',
+      url: config.chroma.url,
+      collection: config.chroma.collection
+    });
     chromaClient = buildChromaClient();
-    
-    // Log connection details (without sensitive info)
-    const url = new URL(config.chroma.url.startsWith("http") ? config.chroma.url : `http://${config.chroma.url}`);
-    logger.info(`Connecting to ChromaDB at ${url.hostname}:${url.port}...`);
     
     // Test connection with retry
     await retryWithBackoff(async () => {
@@ -221,7 +222,14 @@ export async function checkChromaHealth() {
   try {
     const col = await getCollection().catch(() => null);
     if (!col) {
-      return { healthy: false, error: "Cannot get collection", connected: false };
+      return { 
+        healthy: false, 
+        error: "Cannot get collection", 
+        connected: false,
+        mode: config.chroma.persistentPath ? "embedded" : "server",
+        persistentPath: config.chroma.persistentPath || null,
+        url: config.chroma.url
+      };
     }
     
     const count = await col.count();
@@ -233,6 +241,8 @@ export async function checkChromaHealth() {
       collection: config.chroma.collection,
       documentCount: count,
       heartbeat: heartbeat !== null ? "ok" : "failed",
+      mode: config.chroma.persistentPath ? "embedded" : "server",
+      persistentPath: config.chroma.persistentPath || null,
       url: config.chroma.url
     };
   } catch (err) {
@@ -240,6 +250,8 @@ export async function checkChromaHealth() {
       healthy: false,
       connected: false,
       error: err.message,
+      mode: config.chroma.persistentPath ? "embedded" : "server",
+      persistentPath: config.chroma.persistentPath || null,
       url: config.chroma.url
     };
   }
