@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
   curl \
   && rm -rf /var/lib/apt/lists/*
 
+# Create directory for embedded ChromaDB persistence
+RUN mkdir -p /tmp/chromadb && chmod 777 /tmp/chromadb
+
 COPY backend/package*.json ./
 RUN npm ci --omit=dev
 
