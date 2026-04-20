@@ -53,7 +53,7 @@ Required values in `.env`:
 - `DEEPSEEK_API_KEY` - Your DeepSeek API key
 - `TELEGRAM_BOT_TOKEN` - Your Telegram bot token
 - `ESCALATION_CHAT_ID` - Telegram chat ID to receive escalation alerts
-- `ADMIN_TOKEN` - Secret token for the admin dashboard
+- `ADMIN_TOKEN` - (Optional) Secret token for the admin dashboard. Leave empty to disable authentication (default).
 - `WEBHOOK_SECRET` - Random string for Telegram webhook security
 
 ### 2. Start infrastructure (ChromaDB + n8n)
@@ -144,8 +144,9 @@ This repository now includes [`render.yaml`](./render.yaml), a Render Blueprint 
 4. Provide the required secret values during the first sync:
    - `DEEPSEEK_API_KEY`
    - `TELEGRAM_BOT_TOKEN`
-   - `ESCALATION_CHAT_ID`
-   - `ADMIN_TOKEN`
+   - `TELEGRAM_BOT_TOKEN_ADMIN` - Separate bot for escalation notifications
+   - `ESCALATION_CHAT_ID` - Your personal Telegram chat ID
+   - `ADMIN_TOKEN` - (Optional) Leave empty to disable admin authentication
    - `WEBHOOK_URL`
    - `N8N_EDITOR_BASE_URL`
 
@@ -196,7 +197,7 @@ https://<your-n8n-service>.onrender.com/webhook/academy-webhook
 ```text
 http://localhost:3000/admin
 ```
-Enter your `ADMIN_TOKEN` value to connect.
+If `ADMIN_TOKEN` is set, enter it to connect. If empty, the dashboard connects automatically.
 
 Features:
 - View and resolve escalations
@@ -268,6 +269,23 @@ Returns system health metrics (uptime, memory).
    npm run ingest
    ```
    This rebuilds the vector store from scratch.
+
+---
+
+## Language Support
+
+This system includes automatic language detection for Spanish and English:
+
+- **Automatic detection**: Based on common words and special characters (á, é, í, ó, ú, ñ, ¿, ¡)
+- **Consistent responses**: The LLM is instructed to reply in the same language as the user's question
+- **Localized messages**: Pre-defined messages for escalations and errors in both languages
+- **Off-topic handling**: When users ask unrelated questions, the response matches their language
+
+Examples:
+- English query: "What time do you open?" → English response
+- Spanish query: "¿A qué hora abren?" → Spanish response
+- Off-topic English: "What's for dinner?" → "I can only help with questions about..."
+- Off-topic Spanish: "¿Qué hay para cenar?" → "Solo puedo ayudar con preguntas sobre..."
 
 ---
 
