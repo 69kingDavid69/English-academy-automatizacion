@@ -52,26 +52,47 @@ async function initializeChroma() {
   try {
     chromaClient = buildChromaClient();
     
+    // Log connection details (without sensitive info)
+    const url = new URL(config.chroma.url.startsWith("http") ? config.chroma.url : `http://${config.chroma.url}`);
+    logger.info(`Connecting to ChromaDB at ${url.hostname}:${url.port}...`);
+    
     // Test connection with retry
     await retryWithBackoff(async () => {
       logger.info("Testing ChromaDB connection...");
-      // Simple heartbeat check
-      await chromaClient.heartbeat();
+      try {
+        const heartbeat = await chromaClient.heartbeat();
+        logger.info(`ChromaDB heartbeat successful: ${heartbeat}`);
+      } catch (heartbeatErr) {
+        logger.warn(`ChromaDB heartbeat failed: ${heartbeatErr.message}`);
+        // Try alternative connection test
+        await chromaClient.listCollections();
+        logger.info("ChromaDB listCollections successful");
+      }
     }, 3, 2000);
     
     logger.info("ChromaDB connected, getting or creating collection...");
     
     // Get or create collection with retry
     collection = await retryWithBackoff(async () => {
-      return await chromaClient.getOrCreateCollection({
+      const col = await chromaClient.getOrCreateCollection({
         name: config.chroma.collection,
         embeddingFunction: defaultEmbedder,
       });
+      
+      // Check if collection has documents
+      const count = await col.count();
+      logger.info(`Collection '${config.chroma.collection}' has ${count} documents`);
+      
+      return col;
     }, 3, 1000);
     
     logger.info(`ChromaDB collection '${config.chroma.collection}' ready`);
   } catch (err) {
-    logger.error("Failed to initialize ChromaDB", { error: err.message });
+    logger.error("Failed to initialize ChromaDB", { 
+      error: err.message,
+      url: config.chroma.url,
+      collection: config.chroma.collection
+    });
     throw new Error(`Vector store unavailable: ${err.message}`);
   }
 }

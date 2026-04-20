@@ -34,6 +34,8 @@ export function getPendingEscalations() {
 }
 
 export function setupTelegram(app) {
+  logger.info(`Setting up Telegram bot (mode: ${config.telegram.mode})`);
+  
   if (config.telegram.mode === "none") {
     logger.info("Telegram bot disabled (mode: none)");
     // Still create admin bot for escalation notifications if token is provided
@@ -44,19 +46,27 @@ export function setupTelegram(app) {
     return null;
   }
 
+  if (!config.telegram.token) {
+    logger.error("Telegram bot token is required but not configured");
+    return null;
+  }
+
   if (config.telegram.mode === "webhook") {
     bot = new TelegramBot(config.telegram.token);
+    logger.info("Telegram bot created (webhook mode)");
 
     // Register webhook endpoint
+    const webhookPath = `/bot${config.telegram.token}`;
     app.post(
-      `/bot${config.telegram.token}`,
+      webhookPath,
       (req, res) => {
+        logger.debug("Telegram webhook received", { body: req.body });
         bot.processUpdate(req.body);
         res.sendStatus(200);
       }
     );
 
-    logger.info("Telegram bot started in webhook mode");
+    logger.info(`Telegram webhook endpoint registered at ${webhookPath}`);
   } else {
     // Polling mode for local development
     bot = new TelegramBot(config.telegram.token, { polling: true });

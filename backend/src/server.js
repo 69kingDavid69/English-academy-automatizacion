@@ -26,18 +26,31 @@ const server = app.listen(config.server.port, "0.0.0.0", () => {
   });
 });
 
-if (config.telegram.mode === "webhook" && config.telegram.webhookUrl) {
+if (config.telegram.mode === "webhook") {
   const bot = getBot();
 
-  if (bot) {
+  if (!bot) {
+    logger.error("Telegram bot is null. Webhook registration skipped.");
+  } else if (!config.telegram.webhookUrl) {
+    logger.error("TELEGRAM_WEBHOOK_URL is not configured. Webhook registration skipped.");
+  } else {
     const webhookPath = `/bot${config.telegram.token}`;
     const fullUrl = `${config.telegram.webhookUrl}${webhookPath}`;
 
-    await bot.setWebHook(fullUrl, {
-      secret_token: config.telegram.secret,
-    });
-
-    logger.info("Telegram webhook registered", { url: fullUrl });
+    try {
+      await bot.setWebHook(fullUrl, {
+        secret_token: config.telegram.secret,
+      });
+      logger.info("Telegram webhook registered successfully", { 
+        url: fullUrl,
+        webhookUrl: config.telegram.webhookUrl 
+      });
+    } catch (err) {
+      logger.error("Failed to register Telegram webhook", { 
+        error: err.message,
+        url: fullUrl 
+      });
+    }
   }
 }
 
