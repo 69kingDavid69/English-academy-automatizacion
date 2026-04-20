@@ -43,6 +43,8 @@ services:
         value: "150"
       - key: AUTO_INGEST_ON_BOOT
         value: "true"
+      - key: CHROMA_PERSISTENCE_PATH
+        value: "/tmp/chromadb"
       - key: ESCALATION_CHAT_ID
         sync: false
       - key: ESCALATION_THRESHOLD
