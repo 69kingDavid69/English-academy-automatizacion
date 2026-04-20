@@ -85,7 +85,19 @@ export async function processQuery({ userId, userMessage }) {
     rawChunks = await retrieve(userMessage);
   } catch (err) {
     logger.error("Retrieval failed", { error: err.message, userId });
-    return buildErrorResponse(err.message, startTime);
+    const lang = detectLanguage(userMessage);
+    let errorMessage = err.message;
+    // Localize common error messages
+    if (err.message.includes("Vector store unavailable")) {
+      errorMessage = lang === 'es' 
+        ? "La base de conocimientos no está disponible. Por favor, inténtalo de nuevo en un momento."
+        : "Vector store unavailable. Please try again later.";
+    } else if (err.message.includes("ChromaDB")) {
+      errorMessage = lang === 'es'
+        ? "Error de conexión con la base de datos. Por favor, inténtalo más tarde."
+        : "Database connection error. Please try again later.";
+    }
+    return buildErrorResponse(errorMessage, startTime);
   }
 
   // -------------------------------------------------------------------------
