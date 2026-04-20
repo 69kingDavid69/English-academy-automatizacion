@@ -17,6 +17,7 @@ RUN npm ci --omit=dev
 RUN node -e "import('@xenova/transformers').then(({pipeline}) => pipeline('feature-extraction','Xenova/all-MiniLM-L6-v2'))"
 
 COPY backend ./
+COPY frontend /app/frontend
 
 EXPOSE 3000
 

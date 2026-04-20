@@ -47,18 +47,19 @@ const limiter = rateLimit({
 });
 app.use("/api", limiter);
 
-// Static frontend
+// Static frontend — each section served with its own prefix
+app.use("/assets/admin", express.static(paths.adminDir));
+app.use("/assets/widget", express.static(paths.widgetDir));
+app.use("/assets/site", express.static(paths.siteDir));
+
+// HTML pages
 app.get("/admin", (req, res) => {
   res.sendFile(`${paths.adminDir}/index.html`);
 });
 
-app.use("/admin", express.static(paths.adminDir));
-
 app.get("/widget", (req, res) => {
   res.sendFile(`${paths.widgetDir}/index.html`);
 });
-
-app.use("/widget", express.static(paths.widgetDir));
 
 // API routes
 app.use("/api/admin", adminRouter);

@@ -1,11 +1,7 @@
 import { Router } from "express";
-import express from "express";
 import { paths } from "../config/paths.js";
 
 const router = Router();
-
-// Serve landing page static assets
-router.use("/site", express.static(paths.siteDir));
 
 // Landing page at root
 router.get("/", (req, res) => {
