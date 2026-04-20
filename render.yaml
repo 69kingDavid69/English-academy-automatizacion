@@ -42,7 +42,7 @@ services:
       - key: CHUNK_OVERLAP
         value: "150"
       - key: AUTO_INGEST_ON_BOOT
-        value: "false"
+        value: "true"
       - key: ESCALATION_CHAT_ID
         sync: false
       - key: ESCALATION_THRESHOLD
