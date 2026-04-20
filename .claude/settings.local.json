@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PORT=3001 npm start)",
+      "Bash(PORT=4000 npm start)",
+      "Bash(mv English-academy-automatizacion/backend .)",
+      "Bash(mv English-academy-automatizacion/docker-compose.yml .)",
+      "Bash(mv English-academy-automatizacion/render.yaml .)",
+      "Bash(mv English-academy-automatizacion/Dockerfile .)",
+      "Bash(mv English-academy-automatizacion/n8n .)",
+      "Bash(docker ps:*)",
+      "Bash(docker stop:*)",
+      "Bash(xargs kill:*)",
+      "Bash(curl -s http://localhost:4000/)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(curl -s http://localhost:4000/health)",
+      "Bash(curl -s http://localhost:4000/admin)",
+      "Bash(curl -s http://localhost:4000/api)",
+      "Bash(curl -s http://localhost:4000/widget)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/admin/style.css)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/site/style.css)",
+      "Bash(mkdir -p frontend)",
+      "Bash(mv backend/public/site frontend/)",
+      "Bash(mv backend/public/admin frontend/)",
+      "Bash(mv backend/public/widget frontend/)",
+      "Bash(rm -rf backend/public)",
+      "Bash(git push:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/widget)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/admin)"
+    ]
+  }
+}

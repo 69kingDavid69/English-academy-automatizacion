@@ -6,6 +6,7 @@ import { evaluateEscalation, extractCleanReply } from "./escalation.js";
 import { get as cacheGet, set as cacheSet, normalizeQuery } from "./cache.js";
 import { logger } from "../middleware/logger.js";
 import { config } from "../config/env.js";
+import { detectLanguage, localizedMessages } from "../utils/language.js";
 
 // ---------------------------------------------------------------------------
 // Conversation history store
@@ -94,9 +95,14 @@ export async function processQuery({ userId, userMessage }) {
 
   // If there is absolutely nothing above the threshold, skip the LLM entirely
   if (stats.count === 0) {
+    const lang = detectLanguage(userMessage);
+    const message = lang === 'es' 
+      ? "No tengo información específica sobre eso en nuestra base de conocimientos. Uno de nuestros asesores estará encantado de ayudarte."
+      : "I don't have specific information about that in our knowledge base. One of our advisors will be happy to help you.";
+    
     const result = buildEscalationResponse(
       "no_context",
-      "I don't have specific information about that in our knowledge base. One of our advisors will be happy to help you.",
+      message,
       stats,
       startTime
     );
