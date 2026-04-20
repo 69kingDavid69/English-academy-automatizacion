@@ -19,7 +19,7 @@ Built with DeepSeek, RAG (ChromaDB + local embeddings), Telegram, n8n, and Rende
               /api/query  /admin/*  /widget  /admin
                       |
               [RAG Pipeline]
-         [ChromaDB Private Service] + all-MiniLM-L6-v2 (local embeddings)
+         [ChromaDB Private Service] + ChromaDB default embedding function
                       |
               [DeepSeek Chat API]
               Strict RAG prompt, 0 temperature, escalation detection
@@ -51,8 +51,9 @@ cp .env.example .env
 
 Required values in `.env`:
 - `DEEPSEEK_API_KEY` - Your DeepSeek API key
-- `TELEGRAM_BOT_TOKEN` - Your Telegram bot token
-- `ESCALATION_CHAT_ID` - Telegram chat ID to receive escalation alerts
+- `TELEGRAM_BOT_TOKEN` - Your Telegram bot token for user interactions
+- `TELEGRAM_BOT_TOKEN_ADMIN` - (Recommended) Separate bot token for escalation notifications
+- `ESCALATION_CHAT_ID` - Telegram chat ID to receive escalation alerts (your personal chat ID)
 - `ADMIN_TOKEN` - (Optional) Secret token for the admin dashboard. Leave empty to disable authentication (default).
 - `WEBHOOK_SECRET` - Random string for Telegram webhook security
 
@@ -62,8 +63,11 @@ Required values in `.env`:
 docker compose up -d
 ```
 
-If port `8000` or `5678` is already in use on your machine, start the stack on alternate ports:
+The default ports are configured to avoid common conflicts:
+- ChromaDB: `8001` (mapped from container port 8000)
+- n8n: `5679` (mapped from container port 5678)
 
+If you need different ports, edit the `.env` file or set environment variables:
 ```bash
 CHROMA_HOST_PORT=18000 \
 N8N_HOST_PORT=15678 \
@@ -73,10 +77,10 @@ docker compose up -d
 
 Verify ChromaDB is running:
 ```bash
-curl http://localhost:8000/api/v1/heartbeat
+curl http://localhost:8001/api/v2/heartbeat
 ```
 
-n8n is available at: http://localhost:5678
+n8n is available at: http://localhost:5679
 (default credentials: admin / changeme — change in docker-compose.yml)
 
 ### 3. Install backend dependencies
@@ -96,14 +100,14 @@ cd backend
 npm run ingest
 ```
 
-If you changed the local Chroma port, run:
+If you changed the local Chroma port (default: 8001), run:
 
 ```bash
 cd backend
-CHROMA_URL=http://localhost:18000 npm run ingest
+CHROMA_URL=http://localhost:8001 npm run ingest
 ```
 
-First run downloads the embedding model (~25MB). Subsequent runs are fast.
+The system uses ChromaDB's default embedding function (no large model downloads required).
 
 ### 5. Start the backend
 
@@ -113,17 +117,27 @@ npm run dev       # development (auto-restart on changes)
 npm start         # production
 ```
 
-If port `3000` is already in use locally:
+The server starts on the port defined by the `PORT` environment variable (default: 3001). Verify:
+```bash
+curl http://localhost:3001/health
+```
 
+For local development with Telegram bot polling:
 ```bash
 cd backend
-PORT=3001 TELEGRAM_MODE=polling CHROMA_URL=http://localhost:18000 npm run dev
+PORT=4000 TELEGRAM_MODE=polling npm run dev
 ```
 
-The server starts on port 3000. Verify:
+For local development without Telegram bot (to avoid polling conflicts):
 ```bash
-curl http://localhost:3000/health
+cd backend
+PORT=4000 TELEGRAM_MODE=none npm run dev
 ```
+
+Telegram modes:
+- `polling`: Local development (auto-receives messages)
+- `webhook`: Production (requires HTTPS endpoint)
+- `none`: Disables Telegram bot (useful for testing API only)
 
 ---
 
@@ -166,7 +180,7 @@ https://english-academy-n8n.onrender.com
 
 ## n8n Workflow Import
 
-1. Open n8n at http://localhost:5678
+1. Open n8n at http://localhost:5679
 2. Go to Workflows > Import
 3. Select `n8n/workflows/academy-bot-workflow.json`
 4. Set environment variables in n8n Settings:
@@ -181,7 +195,7 @@ host.docker.internal:3001
 
 The webhook URL will be:
 ```text
-http://localhost:5678/webhook/academy-webhook
+http://localhost:5679/webhook/academy-webhook
 ```
 
 On Render it will be:
@@ -195,7 +209,7 @@ https://<your-n8n-service>.onrender.com/webhook/academy-webhook
 
 ### Admin Dashboard
 ```text
-http://localhost:3000/admin
+http://localhost:3001/admin
 ```
 If `ADMIN_TOKEN` is set, enter it to connect. If empty, the dashboard connects automatically.
 
@@ -206,7 +220,7 @@ Features:
 
 ### Chat Widget
 ```text
-http://localhost:3000/widget
+http://localhost:3001/widget
 ```
 
 To embed on any website, add this iframe or include the widget files:
@@ -309,7 +323,7 @@ This system is optimized for minimum API cost:
 | Strategy | Implementation |
 |----------|---------------|
 | Cheap LLM | DeepSeek-chat (~20x cheaper than GPT-4o) |
-| Local embeddings | `all-MiniLM-L6-v2` via ONNX — zero cost |
+| Local embeddings | ChromaDB default embedding function — zero cost |
 | Context compression | Whitespace normalization before sending to LLM |
 | History pruning | Only last 5 exchanges kept in context |
 | Output limit | `max_tokens: 512` prevents runaway outputs |
