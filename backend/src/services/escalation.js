@@ -1,6 +1,16 @@
 import { config } from "../config/env.js";
 import { logger } from "../middleware/logger.js";
 
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // In-memory log (replace with Supabase/PostgreSQL for production)
 const escalationLog = [];
 
@@ -32,8 +42,10 @@ const UNCERTAINTY_PHRASES = [
 const OFF_TOPIC_PHRASES = [
   "i can only help with questions about our academy",
   "i can only help with questions about the academy",
+  "i can only help with questions about",
   "solo puedo ayudar con preguntas sobre nuestra academia",
   "solo puedo ayudarte con preguntas sobre la academia",
+  "solo puedo ayudar con preguntas sobre",
   "solo puedo ayudar con preguntas relacionadas",
 ];
 
@@ -175,17 +187,26 @@ export async function notifyHumanAgent(bot, entry) {
 
   try {
     const score = entry.retrievalStats?.topScore;
+    const escapedChannel = escapeHtml(entry.channel);
+    const escapedUsername = escapeHtml(entry.username || "unknown");
+    const escapedUserId = escapeHtml(String(entry.userId));
+    const escapedUserMessage = escapeHtml(entry.userMessage);
+    const escapedReason = escapeHtml(entry.escalationReason || "unknown");
+    const escapedTimestamp = escapeHtml(entry.timestamp);
+    const confidenceText = score != null ? `${(score * 100).toFixed(0)}%` : "N/A";
+    const escapedConfidence = escapeHtml(confidenceText);
+    
     const text =
-      `*Escalation Required*\n` +
-      `Channel: ${entry.channel}\n` +
-      `User: @${entry.username || "unknown"} (ID: ${entry.userId})\n` +
-      `Message: "${entry.userMessage}"\n` +
-      `Reason: ${entry.escalationReason || "unknown"}\n` +
-      `Confidence: ${score != null ? (score * 100).toFixed(0) + "%" : "N/A"}\n` +
-      `Time: ${entry.timestamp}`;
+      `<b>Escalation Required</b>\n` +
+      `Channel: ${escapedChannel}\n` +
+      `User: @${escapedUsername} (ID: ${escapedUserId})\n` +
+      `Message: "${escapedUserMessage}"\n` +
+      `Reason: ${escapedReason}\n` +
+      `Confidence: ${escapedConfidence}\n` +
+      `Time: ${escapedTimestamp}`;
 
     await bot.sendMessage(config.escalation.chatId, text, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
     });
   } catch (err) {
     logger.error("Failed to notify human agent", { error: err.message });
