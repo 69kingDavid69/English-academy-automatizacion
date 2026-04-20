@@ -28,10 +28,19 @@ function createLogger(logger) {
 }
 
 function createChromaClient() {
+  // If persistent path is configured, use embedded ChromaDB
+  if (config.chroma.persistentPath) {
+    console.log(`Using embedded ChromaDB with persistence at ${config.chroma.persistentPath}`);
+    return new ChromaClient({
+      path: config.chroma.persistentPath,
+    });
+  }
+  
+  // Otherwise connect to ChromaDB server
   const chromaUrl = new URL(
     config.chroma.url.startsWith("http") ? config.chroma.url : `http://${config.chroma.url}`
   );
-
+  console.log(`Connecting to ChromaDB server at ${chromaUrl.hostname}:${chromaUrl.port}`);
   return new ChromaClient({
     host: chromaUrl.hostname,
     port: parseInt(chromaUrl.port) || 8000,
