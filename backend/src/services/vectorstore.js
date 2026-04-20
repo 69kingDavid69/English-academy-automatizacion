@@ -9,7 +9,28 @@ const defaultEmbedder = new DefaultEmbeddingFunction();
 let collection = null;
 let chromaClient = null;
 
-
+/**
+ * Exponential backoff retry helper
+ */
+async function retryWithBackoff(operation, maxRetries = 5, baseDelay = 1000) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (attempt === maxRetries) break;
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      logger.warn(`ChromaDB operation failed, retrying in ${delay}ms`, {
+        attempt,
+        maxRetries,
+        error: err.message,
+      });
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
 
 function buildChromaClient() {
   const url = new URL(config.chroma.url.startsWith("http") ? config.chroma.url : `http://${config.chroma.url}`);
@@ -22,13 +43,37 @@ function buildChromaClient() {
 
 async function getCollection() {
   if (!collection) {
-    chromaClient = buildChromaClient();
-    collection = await chromaClient.getCollection({ 
-      name: config.chroma.collection,
-      embeddingFunction: defaultEmbedder
-    });
+    await initializeChroma();
   }
   return collection;
+}
+
+async function initializeChroma() {
+  try {
+    chromaClient = buildChromaClient();
+    
+    // Test connection with retry
+    await retryWithBackoff(async () => {
+      logger.info("Testing ChromaDB connection...");
+      // Simple heartbeat check
+      await chromaClient.heartbeat();
+    }, 3, 2000);
+    
+    logger.info("ChromaDB connected, getting or creating collection...");
+    
+    // Get or create collection with retry
+    collection = await retryWithBackoff(async () => {
+      return await chromaClient.getOrCreateCollection({
+        name: config.chroma.collection,
+        embeddingFunction: defaultEmbedder,
+      });
+    }, 3, 1000);
+    
+    logger.info(`ChromaDB collection '${config.chroma.collection}' ready`);
+  } catch (err) {
+    logger.error("Failed to initialize ChromaDB", { error: err.message });
+    throw new Error(`Vector store unavailable: ${err.message}`);
+  }
 }
 
 async function embedQuery(text) {

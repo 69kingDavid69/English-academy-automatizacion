@@ -6,7 +6,17 @@ import { getBot } from "./routes/telegram.js";
 
 if (config.rag.autoIngestOnBoot) {
   logger.info("AUTO_INGEST_ON_BOOT enabled. Checking knowledge base.");
-  await ensureKnowledgeBase({ logger });
+  // Run ingestion in background to avoid blocking server startup
+  (async () => {
+    try {
+      await ensureKnowledgeBase({ logger });
+      logger.info("Knowledge base ingestion completed successfully.");
+    } catch (err) {
+      logger.error("Knowledge base ingestion failed", { error: err.message });
+      // Server continues running, but RAG will have limited functionality
+      logger.warn("RAG will have limited functionality until ingestion succeeds.");
+    }
+  })();
 }
 
 const server = app.listen(config.server.port, "0.0.0.0", () => {
