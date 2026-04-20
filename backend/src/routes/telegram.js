@@ -34,6 +34,16 @@ export function getPendingEscalations() {
 }
 
 export function setupTelegram(app) {
+  if (config.telegram.mode === "none") {
+    logger.info("Telegram bot disabled (mode: none)");
+    // Still create admin bot for escalation notifications if token is provided
+    if (config.telegram.adminToken) {
+      adminBot = new TelegramBot(config.telegram.adminToken);
+      logger.info("Admin bot initialized for escalation notifications");
+    }
+    return null;
+  }
+
   if (config.telegram.mode === "webhook") {
     bot = new TelegramBot(config.telegram.token);
 
