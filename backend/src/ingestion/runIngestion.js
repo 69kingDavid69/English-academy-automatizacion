@@ -1,7 +1,7 @@
 import { readdir, readFile } from "fs/promises";
 import { resolve, extname, basename } from "path";
 import { ChromaClient } from "chromadb";
-import { pipeline } from "@xenova/transformers";
+import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
 import { chunkText } from "./chunker.js";
 import { config } from "../config/env.js";
 import { paths } from "../config/paths.js";
@@ -40,19 +40,14 @@ function createChromaClient() {
 }
 
 async function loadEmbeddingModel(log) {
-  log.info("Loading embedding model (first run downloads ~25MB)...");
-  const extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-  log.info("Embedding model loaded.");
+  log.info("Using ChromaDB default embedding function...");
+  const extractor = new DefaultEmbeddingFunction();
+  log.info("Embedding function ready.");
   return extractor;
 }
 
 async function embed(extractor, texts) {
-  const output = await extractor(texts, {
-    pooling: "mean",
-    normalize: true,
-  });
-
-  return Array.from({ length: texts.length }, (_, i) => Array.from(output[i].data));
+  return await extractor.generate(texts);
 }
 
 async function loadDocuments(log) {

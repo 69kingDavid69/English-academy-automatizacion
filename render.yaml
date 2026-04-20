@@ -15,6 +15,8 @@ services:
         value: https://api.deepseek.com
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      - key: TELEGRAM_BOT_TOKEN_ADMIN
+        sync: false
       - key: TELEGRAM_MODE
         value: webhook
       - key: WEBHOOK_SECRET
@@ -32,7 +34,7 @@ services:
       - key: CHROMA_COLLECTION
         value: academy_knowledge
       - key: RAG_SIMILARITY_THRESHOLD
-        value: "0.52"
+        value: "0.45"
       - key: RAG_TOP_K
         value: "4"
       - key: CHUNK_SIZE
@@ -40,13 +42,11 @@ services:
       - key: CHUNK_OVERLAP
         value: "150"
       - key: AUTO_INGEST_ON_BOOT
-        value: "true"
+        value: "false"
       - key: ESCALATION_CHAT_ID
         sync: false
       - key: ESCALATION_THRESHOLD
         value: "0.48"
-      - key: ADMIN_TOKEN
-        sync: false
       - key: RATE_LIMIT_MAX
         value: "30"
       - key: LOG_LEVEL
