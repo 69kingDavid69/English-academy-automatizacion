@@ -5,6 +5,16 @@ import { logEscalation } from "../services/escalation.js";
 import { logger } from "../middleware/logger.js";
 import { detectLanguage, localizedMessages } from "../utils/language.js";
 
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 let bot = null;
 let adminBot = null;
 
@@ -126,18 +136,23 @@ async function sendEscalationWithMapping(entry, userChatId) {
 
   try {
     const score = entry.retrievalStats?.topScore;
+    const escapedUserMessage = escapeHtml(entry.userMessage);
+    const escapedUsername = escapeHtml(entry.username || "unknown");
+    const escapedChannel = escapeHtml(entry.channel);
+    const escapedReason = escapeHtml(entry.escalationReason || "unknown");
+    
     const text =
-      `*Escalation Required*\n` +
-      `Channel: ${entry.channel}\n` +
-      `User: @${entry.username || "unknown"} (ID: ${entry.userId})\n` +
-      `Message: "${entry.userMessage}"\n` +
-      `Reason: ${entry.escalationReason || "unknown"}\n` +
+      `<b>Escalation Required</b>\n` +
+      `Channel: ${escapedChannel}\n` +
+      `User: @${escapedUsername} (ID: ${entry.userId})\n` +
+      `Message: "${escapedUserMessage}"\n` +
+      `Reason: ${escapedReason}\n` +
       `Confidence: ${score != null ? (score * 100).toFixed(0) + "%" : "N/A"}\n` +
       `Time: ${entry.timestamp}\n\n` +
-      `_Reply to this message to respond directly to the user._`;
+      `<i>Reply to this message to respond directly to the user.</i>`;
 
     const sent = await notificationBot.sendMessage(config.escalation.chatId, text, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
     });
 
     // Store mapping: admin message_id → user info
