@@ -112,9 +112,13 @@ export async function processQuery({ userId, userMessage }) {
 
   // If the top chunk is below the escalation threshold, the answer will be unreliable
   if (stats.topScore < config.escalation.threshold) {
+    const lang = detectLanguage(userMessage);
+    const message = lang === 'es' 
+      ? "Quiero asegurarme de que recibas información precisa. Permíteme conectarte con uno de nuestros asesores."
+      : "I want to make sure you get accurate information. Let me connect you with one of our advisors.";
     const result = buildEscalationResponse(
       "low_top_similarity",
-      "I want to make sure you get accurate information. Let me connect you with one of our advisors.",
+      message,
       stats,
       startTime
     );
@@ -157,7 +161,11 @@ export async function processQuery({ userId, userMessage }) {
     }));
   } catch (err) {
     logger.error("LLM call failed", { error: err.message, userId });
-    return buildErrorResponse("LLM unavailable. Please try again in a moment.", startTime);
+    const lang = detectLanguage(userMessage);
+    const errorMsg = lang === 'es' 
+      ? "El servicio de IA no está disponible. Por favor, inténtalo de nuevo en un momento."
+      : "LLM unavailable. Please try again in a moment.";
+    return buildErrorResponse(errorMsg, startTime);
   }
 
   // -------------------------------------------------------------------------

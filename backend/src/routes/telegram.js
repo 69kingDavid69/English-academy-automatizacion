@@ -3,6 +3,7 @@ import { config } from "../config/env.js";
 import { processQuery } from "../services/rag.js";
 import { logEscalation } from "../services/escalation.js";
 import { logger } from "../middleware/logger.js";
+import { detectLanguage, localizedMessages } from "../utils/language.js";
 
 let bot = null;
 
@@ -80,10 +81,11 @@ async function handleMessage(msg) {
       // Send escalation to admin and store mapping for reply-back
       await sendEscalationWithMapping(entry, chatId);
 
-      await bot.sendMessage(
-        chatId,
-        "An advisor has been notified and will contact you shortly. Our hours are Monday-Friday 8am-7pm."
-      );
+      const lang = detectLanguage(userMessage);
+      const notificationMsg = lang === 'es' 
+        ? "Se ha notificado a un asesor y se comunicará contigo en breve. Nuestro horario es de lunes a viernes de 8am a 7pm."
+        : "An advisor has been notified and will contact you shortly. Our hours are Monday-Friday 8am-7pm.";
+      await bot.sendMessage(chatId, notificationMsg);
     }
 
     logger.info("Telegram message handled", {
@@ -93,10 +95,11 @@ async function handleMessage(msg) {
     });
   } catch (err) {
     logger.error("Telegram message error", { error: err.message, userId });
-    await bot.sendMessage(
-      chatId,
-      "Sorry, I'm having technical difficulties. Please try again in a moment or contact us directly."
-    );
+    const lang = detectLanguage(userMessage);
+    const errorMsg = lang === 'es' 
+      ? "Lo siento, estoy teniendo dificultades técnicas. Por favor, inténtalo de nuevo en un momento o contáctanos directamente."
+      : "Sorry, I'm having technical difficulties. Please try again in a moment or contact us directly.";
+    await bot.sendMessage(chatId, errorMsg);
   }
 }
 
