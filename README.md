@@ -1,387 +1,198 @@
-# Academy Support Bot
+# English Academy - AI Support Bot
 
-Production-ready AI customer support assistant for a language academy.
-Built with DeepSeek, RAG (ChromaDB + local embeddings), Telegram, n8n, and Render.
-
----
+AI-powered customer support chatbot for a language academy. Uses RAG (Retrieval-Augmented Generation) with ChromaDB for knowledge retrieval and DeepSeek LLM for response generation.
 
 ## Architecture
 
 ```
-[Student] --> [Telegram Bot / HTTP Webhook]
-                      |
-                [Render Web URLs]  <-- public HTTPS
-                      |
-              [n8n Workflow]
-              Trigger -> Backend -> Response -> Escalation path
-                      |
-             [Node.js Backend]  :PORT
-              /api/query  /admin/*  /widget  /admin
-                      |
-              [RAG Pipeline]
-         [ChromaDB Private Service] + ChromaDB default embedding function
-                      |
-              [DeepSeek Chat API]
-              Strict RAG prompt, 0 temperature, escalation detection
-                      |
-              [Human Escalation]
-              Telegram notification to admin on low confidence
+┌─────────────────────────────────────────────────┐
+│           Docker Container (Production)          │
+│                                                  │
+│  ┌���─────────────┐       ┌────────────────────┐  │
+│  │ ChromaDB     │◄─────►│  Node.js Backend   │  │
+│  │ Server :8000 │       │  (Express) :3000   │  │
+│  └──────��───────┘       └────────┬───────────┘  │
+│                                  │               │
+└──────────────────────────────────┼───────────────┘
+                                   │
+                    ┌──────────────┼─────────���────┐
+                    │              │              │
+              ┌─────▼────┐  ┌─────▼────┐  ┌─────▼────┐
+              │ Frontend  │  │ Telegram │  │ DeepSeek │
+              │  Widget   │  │   Bot    │  │   API    │
+              └──────────┘  └──────────┘  └──────────┘
 ```
 
----
+**Key design decision:** ChromaDB runs inside the same container as the Node.js backend. The ChromaDB JavaScript client is HTTP-only (no embedded mode support), so a ChromaDB server process is started alongside the Node app via `start.sh`. Data is ephemeral on Render but automatically rebuilt on every deploy via `AUTO_INGEST_ON_BOOT=true`.
 
-## Prerequisites
+## Local Development
 
-- Node.js 18+
-- Docker + Docker Compose
-- A DeepSeek API key (https://platform.deepseek.com)
-- A Telegram bot token (from @BotFather)
-- A Render account for public deployment (https://render.com)
+### Prerequisites
 
----
+- Node.js >= 18
+- Docker & Docker Compose
+- DeepSeek API key
+- Telegram bot token (from @BotFather)
 
-## Setup
-
-### 1. Clone and configure environment
+### Setup
 
 ```bash
+# 1. Configure environment
 cp .env.example .env
 # Edit .env with your actual values
-```
 
-Required values in `.env`:
-- `DEEPSEEK_API_KEY` - Your DeepSeek API key
-- `TELEGRAM_BOT_TOKEN` - Your Telegram bot token for user interactions
-- `TELEGRAM_BOT_TOKEN_ADMIN` - (Recommended) Separate bot token for escalation notifications
-- `ESCALATION_CHAT_ID` - Telegram chat ID to receive escalation alerts (your personal chat ID)
-- `ADMIN_TOKEN` - (Optional) Secret token for the admin dashboard. Leave empty to disable authentication (default).
-- `WEBHOOK_SECRET` - Random string for Telegram webhook security
-
-### 2. Start infrastructure (ChromaDB + n8n)
-
-```bash
+# 2. Start ChromaDB and n8n via Docker Compose
 docker compose up -d
-```
 
-The default ports are configured to avoid common conflicts:
-- ChromaDB: `8001` (mapped from container port 8000)
-- n8n: `5679` (mapped from container port 5678)
+# 3. Install backend dependencies
+cd backend && npm install
 
-If you need different ports, edit the `.env` file or set environment variables:
-```bash
-CHROMA_HOST_PORT=18000 \
-N8N_HOST_PORT=15678 \
-N8N_WEBHOOK_URL=http://localhost:15678 \
-docker compose up -d
-```
-
-Verify ChromaDB is running:
-```bash
-curl http://localhost:8001/api/v2/heartbeat
-```
-
-n8n is available at: http://localhost:5679
-(default credentials: admin / changeme — change in docker-compose.yml)
-
-### 3. Install backend dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### 4. Run document ingestion
-
-This reads all `.txt` and `.md` files from `backend/documents/`, chunks them,
-generates local embeddings, and stores them in ChromaDB.
-
-```bash
-cd backend
+# 4. Run document ingestion
 npm run ingest
+
+# 5. Start backend in dev mode
+npm run dev
 ```
 
-If you changed the local Chroma port (default: 8001), run:
+### Local Ports
+
+| Service         | Port  | URL                          |
+|-----------------|-------|------------------------------|
+| Backend API     | 3001  | http://localhost:3001        |
+| ChromaDB        | 8001  | http://localhost:8001        |
+| n8n             | 5679  | http://localhost:5679        |
+| Frontend widget | 3001  | http://localhost:3001/widget |
+| Admin dashboard | 3001  | http://localhost:3001/admin  |
+
+### Test Endpoints
 
 ```bash
-cd backend
-CHROMA_URL=http://localhost:8001 npm run ingest
-```
-
-The system uses ChromaDB's default embedding function (no large model downloads required).
-
-### 5. Start the backend
-
-```bash
-cd backend
-npm run dev       # development (auto-restart on changes)
-npm start         # production
-```
-
-The server starts on the port defined by the `PORT` environment variable (default: 3001). Verify:
-```bash
+# Health check
 curl http://localhost:3001/health
+
+# Detailed health (ChromaDB status, document count)
+curl http://localhost:3001/health/detailed
+
+# Query the chatbot
+curl -X POST http://localhost:3001/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test","message":"What courses do you offer?"}'
+
+# Run document ingestion manually
+cd backend && npm run ingest
 ```
 
-For local development with Telegram bot polling:
-```bash
-cd backend
-PORT=4000 TELEGRAM_MODE=polling npm run dev
-```
+### Telegram Modes
 
-For local development without Telegram bot (to avoid polling conflicts):
-```bash
-cd backend
-PORT=4000 TELEGRAM_MODE=none npm run dev
-```
+- `polling` — Local development (auto-receives messages)
+- `webhook` — Production (requires HTTPS endpoint)
+- `none` — Disables Telegram bot (useful for testing API only)
 
-Telegram modes:
-- `polling`: Local development (auto-receives messages)
-- `webhook`: Production (requires HTTPS endpoint)
-- `none`: Disables Telegram bot (useful for testing API only)
+## Production Deployment (Render)
 
----
+### How It Works
 
-## Render Deployment
+The app deploys as a **single Docker container** on Render. The container runs two processes:
 
-This repository now includes [`render.yaml`](./render.yaml), a Render Blueprint that creates:
+1. **ChromaDB server** on port 8000 (internal, not exposed externally)
+2. **Node.js backend** on port 3000 (exposed via Render)
 
-- A public backend web service
-- A private ChromaDB service with persistent disk
-- A public n8n web service
-- A managed Postgres database for n8n
+The `start.sh` script orchestrates startup:
+1. Launches ChromaDB server
+2. Waits for ChromaDB to respond to heartbeat
+3. Starts Node.js
+4. On boot, `AUTO_INGEST_ON_BOOT=true` indexes all documents into ChromaDB
 
-### Deploy the stack
+### Deploy
 
-1. Push this repository to GitHub.
-2. In Render, choose `New > Blueprint`.
-3. Connect the repository and deploy the Blueprint from `render.yaml`.
-4. Provide the required secret values during the first sync:
+1. Push to GitHub
+2. In Render: New > Blueprint > Connect repo > Deploy from `render.yaml`
+3. Set required secret values:
    - `DEEPSEEK_API_KEY`
    - `TELEGRAM_BOT_TOKEN`
-   - `TELEGRAM_BOT_TOKEN_ADMIN` - Separate bot for escalation notifications
-   - `ESCALATION_CHAT_ID` - Your personal Telegram chat ID
-   - `ADMIN_TOKEN` - (Optional) Leave empty to disable admin authentication
-   - `WEBHOOK_URL`
-   - `N8N_EDITOR_BASE_URL`
+   - `TELEGRAM_BOT_TOKEN_ADMIN`
+   - `ESCALATION_CHAT_ID`
 
-For `WEBHOOK_URL` and `N8N_EDITOR_BASE_URL`, use your n8n public URL, for example:
+### Render Services
 
-```text
-https://english-academy-n8n.onrender.com
-```
+| Service | Type | Purpose |
+|---------|------|---------|
+| `english-academy-backend` | Web (Docker) | API, Telegram webhook, widget, ChromaDB |
+| `english-academy-n8n` | Web (Image) | Automation/webhook UI |
+| `english-academy-n8n-db` | Postgres | n8n workflow storage |
 
-### Render-specific behavior
+### Render-Specific Behavior
 
-- The backend auto-detects `RENDER_EXTERNAL_URL`, so Telegram webhook registration works on Render without manually setting `TELEGRAM_WEBHOOK_URL`.
-- `AUTO_INGEST_ON_BOOT=true` is enabled for the Render backend, so the first deploy indexes `backend/documents/` into Chroma automatically.
-- n8n connects to the backend over Render private networking using `BACKEND_HOSTPORT`, so it does not depend on a public backend URL internally.
+- Backend auto-detects `RENDER_EXTERNAL_URL` for Telegram webhook registration
+- `AUTO_INGEST_ON_BOOT=true` rebuilds the knowledge base on every deploy
+- ChromaDB data is ephemeral (stored in `/tmp/chromadb`) — acceptable because it's rebuilt from source documents on boot
 
----
+## Environment Variables
 
-## n8n Workflow Import
+| Variable                  | Description                              | Default |
+|---------------------------|------------------------------------------|---------|
+| `DEEPSEEK_API_KEY`        | DeepSeek API key                         | Required |
+| `TELEGRAM_BOT_TOKEN`      | Telegram bot token                       | Required |
+| `TELEGRAM_BOT_TOKEN_ADMIN`| Admin bot for escalation replies         | — |
+| `TELEGRAM_MODE`           | `webhook`, `polling`, or `none`          | `polling` |
+| `CHROMA_URL`              | ChromaDB server URL                      | `http://localhost:8000` |
+| `CHROMA_COLLECTION`       | Collection name                          | `academy_knowledge` |
+| `AUTO_INGEST_ON_BOOT`     | Index documents on startup               | `false` |
+| `RAG_SIMILARITY_THRESHOLD`| Min cosine similarity to consider        | `0.45` |
+| `RAG_TOP_K`              | Final chunks sent to LLM                  | `4` |
+| `CHUNK_SIZE`             | Max characters per chunk                  | `800` |
+| `CHUNK_OVERLAP`          | Overlap between chunks                    | `150` |
+| `ESCALATION_CHAT_ID`      | Telegram chat ID for escalation alerts   | — |
+| `ESCALATION_THRESHOLD`    | Below this score, skip LLM and escalate  | `0.40` |
+| `PORT`                    | Server port                              | `3000` |
 
-1. Open n8n at http://localhost:5679
-2. Go to Workflows > Import
-3. Select `n8n/workflows/academy-bot-workflow.json`
-4. Set environment variables in n8n Settings:
-   - `BACKEND_HOSTPORT`: `host.docker.internal:3000`
-5. Activate the workflow
+## RAG Pipeline
 
-If your local backend uses another port, change `BACKEND_HOSTPORT` accordingly, for example:
-
-```text
-host.docker.internal:3001
-```
-
-The webhook URL will be:
-```text
-http://localhost:5679/webhook/academy-webhook
-```
-
-On Render it will be:
-```text
-https://<your-n8n-service>.onrender.com/webhook/academy-webhook
-```
-
----
-
-## Accessing the Frontend
-
-### Admin Dashboard
-```text
-http://localhost:3001/admin
-```
-If `ADMIN_TOKEN` is set, enter it to connect. If empty, the dashboard connects automatically.
-
-Features:
-- View and resolve escalations
-- Monitor system health
-- Test RAG queries directly
-
-### Chat Widget
-```text
-http://localhost:3001/widget
-```
-
-To embed on any website, add this iframe or include the widget files:
-```html
-<script>
-  // Point to your public URL
-  window.ACADEMY_CHAT_URL = 'https://your-backend.onrender.com';
-</script>
-<iframe src="https://your-backend.onrender.com/widget"
-        style="position:fixed;bottom:0;right:0;width:400px;height:600px;border:none;z-index:9999">
-</iframe>
-```
-
----
-
-## API Reference
-
-### POST /api/query
-
-Query the RAG system directly (used by n8n and the widget).
-
-```json
-// Request
-{
-  "userId": "user123",
-  "message": "How much does the B2 course cost?",
-  "channel": "webhook",
-  "username": "optional"
-}
-
-// Response
-{
-  "reply": "The Intermediate/Upper Intermediate level costs $150 USD per month...",
-  "escalated": false,
-  "confidence": 0.82,
-  "latencyMs": 1240
-}
-```
-
-### GET /api/admin/escalations
-
-Returns all escalation events. Requires `x-admin-token` header.
-
-### POST /api/admin/escalations/:id/resolve
-
-Marks an escalation as resolved.
-
-### GET /api/admin/health
-
-Returns system health metrics (uptime, memory).
-
----
+1. Documents in `backend/documents/` are chunked and embedded on boot
+2. User query is embedded and matched against ChromaDB (cosine similarity)
+3. Candidates below `RAG_SIMILARITY_THRESHOLD` are discarded
+4. Remaining candidates are re-ranked (65% vector similarity + 35% keyword overlap)
+5. Top-K context is trimmed to 1800 tokens and sent to DeepSeek LLM
+6. If confidence is too low, the query is escalated to a human agent via Telegram
 
 ## Adding or Updating Documents
 
 1. Add `.txt` or `.md` files to `backend/documents/`
 2. Re-run ingestion:
    ```bash
-   cd backend
-   npm run ingest
+   cd backend && npm run ingest
    ```
-   This rebuilds the vector store from scratch.
+3. In production, just redeploy — `AUTO_INGEST_ON_BOOT` handles it automatically
 
----
+## Channels
 
-## Language Support
-
-This system includes automatic language detection for Spanish and English:
-
-- **Automatic detection**: Based on common words and special characters (á, é, í, ó, ú, ñ, ¿, ¡)
-- **Consistent responses**: The LLM is instructed to reply in the same language as the user's question
-- **Localized messages**: Pre-defined messages for escalations and errors in both languages
-- **Off-topic handling**: When users ask unrelated questions, the response matches their language
-
-Examples:
-- English query: "What time do you open?" → English response
-- Spanish query: "¿A qué hora abren?" → Spanish response
-- Off-topic English: "What's for dinner?" → "I can only help with questions about..."
-- Off-topic Spanish: "¿Qué hay para cenar?" → "Solo puedo ayudar con preguntas sobre..."
-
----
-
-## Render Services
-
-The default `render.yaml` provisions these services:
-
-| Service | Type | Purpose |
-|---------|------|---------|
-| `english-academy-backend` | Web service | Public API, Telegram webhook, admin UI, widget |
-| `english-academy-chromadb` | Private service | Internal vector database with persistent disk |
-| `english-academy-n8n` | Web service | Public automation/webhook UI |
-| `english-academy-n8n-db` | Render Postgres | Persistent n8n workflow storage |
-
----
-
-## Token Optimization Strategy
-
-This system is optimized for minimum API cost:
-
-| Strategy | Implementation |
-|----------|---------------|
-| Cheap LLM | DeepSeek-chat (~20x cheaper than GPT-4o) |
-| Local embeddings | ChromaDB default embedding function — zero cost |
-| Context compression | Whitespace normalization before sending to LLM |
-| History pruning | Only last 5 exchanges kept in context |
-| Output limit | `max_tokens: 512` prevents runaway outputs |
-| Temperature 0 | Deterministic, no wasted tokens on creative sampling |
-| Early escalation | Low-confidence queries escalate before hitting LLM |
-
-Estimated cost per 1000 queries: ~$0.05-0.15 USD (DeepSeek pricing, 2024)
-
----
-
-## Suggested MCPs and Additional Tools
-
-| Tool | Use Case | Status |
-|------|----------|--------|
-| **memory MCP** | Persist user preferences across sessions | Optional |
-| **Redis** | Replace in-memory conversation store for multi-instance | Recommended for production |
-| **Sentry** | Error tracking and alerting | Recommended |
-| **Prometheus + Grafana** | Metrics dashboard for latency, escalation rate | Optional |
-| **Supabase** | Persistent escalation log with full SQL queries | Optional |
-
----
-
-## Environment Variables Reference
-
-See `.env.example` for all variables with descriptions.
-
----
+- **Frontend widget** — Embedded chat at `/widget`
+- **Telegram bot** — Webhook in production, polling in development
+- **REST API** — Direct `POST /api/query` for integrations (n8n, custom apps)
 
 ## Project Structure
 
 ```
-academy-support-bot/
+├── Dockerfile              # Multi-process container (ChromaDB + Node.js)
+├── start.sh                # Startup: ChromaDB → wait → Node.js
+├── render.yaml             # Render Blueprint
+├── docker-compose.yml      # Local development services
 ├── backend/
 │   ├── src/
-│   │   ├── config/env.js          # Environment config
-│   │   ├── middleware/logger.js   # Winston logger
-│   │   ├── prompts/systemPrompt.js # RAG system prompt + few-shots
-│   │   ├── routes/
-│   │   │   ├── telegram.js        # Telegram bot handler
-│   │   │   └── webhook.js         # HTTP API + admin endpoints
-│   │   ├── services/
-│   │   │   ├── rag.js             # Main RAG pipeline
-│   │   │   ├── deepseek.js        # DeepSeek API client
-│   │   │   ├── vectorstore.js     # ChromaDB retrieval
-│   │   │   └── escalation.js      # Escalation logic
-│   │   ├── ingestion/
-│   │   │   ├── ingest.js          # Ingestion pipeline runner
-│   │   │   └── chunker.js         # Text chunking with overlap
-│   │   └── app.js                 # Express server entry point
-│   ├── documents/                 # Knowledge base documents
-│   ├── Dockerfile
-│   └── package.json
-├── frontend/
-│   ├── admin/                     # Admin dashboard (HTML/CSS/JS)
-│   └── widget/                    # Embeddable chat widget
-├── n8n/workflows/                 # Importable n8n workflow JSON
-├── docker-compose.yml             # ChromaDB + n8n services
-├── render.yaml                    # Render Blueprint for backend + Chroma + n8n
-├── .env.example
-└── README.md
+│   │   ├── server.js       # Entry point
+│   │   ├── app.js          # Express app setup
+│   │   ├── config/         # Environment config
+│   │   ├── routes/         # API, Telegram, admin, site routes
+│   │   ├── services/       # RAG, vector store, reranker, escalation
+│   │   ├── ingestion/      # Document chunking and indexing
+│   │   └─��� middleware/     # Logger, rate limiter
+│   └── documents/          # Knowledge base source files (.txt, .md)
+└── frontend/               # Chat widget and admin dashboard
 ```
+
+## Language Support
+
+Automatic language detection for Spanish and English:
+- Replies match the user's language
+- Escalation and error messages are localized
+- Off-topic detection works in both languages

@@ -33,15 +33,6 @@ async function retryWithBackoff(operation, maxRetries = 5, baseDelay = 1000) {
 }
 
 function buildChromaClient() {
-  // If persistent path is configured, use embedded ChromaDB
-  if (config.chroma.persistentPath) {
-    logger.info(`Using embedded ChromaDB with persistence at ${config.chroma.persistentPath}`);
-    return new ChromaClient({
-      path: config.chroma.persistentPath,
-    });
-  }
-  
-  // Otherwise connect to ChromaDB server
   const url = new URL(config.chroma.url.startsWith("http") ? config.chroma.url : `http://${config.chroma.url}`);
   logger.info(`Connecting to ChromaDB server at ${url.hostname}:${url.port}`);
   return new ChromaClient({
@@ -60,8 +51,7 @@ async function getCollection() {
 
 async function initializeChroma() {
   try {
-    logger.info(`Initializing ChromaDB with config`, { 
-      persistentPath: config.chroma.persistentPath || '(not set)',
+    logger.info(`Initializing ChromaDB with config`, {
       url: config.chroma.url,
       collection: config.chroma.collection
     });
@@ -222,27 +212,23 @@ export async function checkChromaHealth() {
   try {
     const col = await getCollection().catch(() => null);
     if (!col) {
-      return { 
-        healthy: false, 
-        error: "Cannot get collection", 
+      return {
+        healthy: false,
+        error: "Cannot get collection",
         connected: false,
-        mode: config.chroma.persistentPath ? "embedded" : "server",
-        persistentPath: config.chroma.persistentPath || null,
         url: config.chroma.url
       };
     }
-    
+
     const count = await col.count();
     const heartbeat = await chromaClient.heartbeat().catch(() => null);
-    
+
     return {
       healthy: true,
       connected: true,
       collection: config.chroma.collection,
       documentCount: count,
       heartbeat: heartbeat !== null ? "ok" : "failed",
-      mode: config.chroma.persistentPath ? "embedded" : "server",
-      persistentPath: config.chroma.persistentPath || null,
       url: config.chroma.url
     };
   } catch (err) {
@@ -250,8 +236,6 @@ export async function checkChromaHealth() {
       healthy: false,
       connected: false,
       error: err.message,
-      mode: config.chroma.persistentPath ? "embedded" : "server",
-      persistentPath: config.chroma.persistentPath || null,
       url: config.chroma.url
     };
   }

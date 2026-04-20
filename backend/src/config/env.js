@@ -42,10 +42,6 @@ function resolveChromaUrl() {
   return `${protocol}://${host}:${port}`;
 }
 
-function resolveChromaPersistencePath() {
-  return process.env.CHROMA_PERSISTENCE_PATH || "";
-}
-
 for (const key of required) {
   if (!process.env[key]) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -75,7 +71,6 @@ export const config = {
   chroma: {
     url: resolveChromaUrl(),
     collection: process.env.CHROMA_COLLECTION || "academy_knowledge",
-    persistentPath: resolveChromaPersistencePath(),
   },
   rag: {
     similarityThreshold: parseFloat(process.env.RAG_SIMILARITY_THRESHOLD || "0.45"),

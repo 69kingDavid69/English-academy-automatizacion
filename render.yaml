@@ -21,16 +21,8 @@ services:
         value: webhook
       - key: WEBHOOK_SECRET
         generateValue: true
-      - key: CHROMA_HOST
-        fromService:
-          type: pserv
-          name: english-academy-chromadb
-          property: host
-      - key: CHROMA_PORT
-        fromService:
-          type: pserv
-          name: english-academy-chromadb
-          property: port
+      - key: CHROMA_URL
+        value: "http://localhost:8000"
       - key: CHROMA_COLLECTION
         value: academy_knowledge
       - key: RAG_SIMILARITY_THRESHOLD
@@ -43,8 +35,6 @@ services:
         value: "150"
       - key: AUTO_INGEST_ON_BOOT
         value: "true"
-      - key: CHROMA_PERSISTENCE_PATH
-        value: "/tmp/chromadb"
       - key: ESCALATION_CHAT_ID
         sync: false
       - key: ESCALATION_THRESHOLD
@@ -53,20 +43,6 @@ services:
         value: "30"
       - key: LOG_LEVEL
         value: info
-
-  - type: pserv
-    name: english-academy-chromadb
-    runtime: image
-    plan: starter
-    image:
-      url: docker.io/chromadb/chroma:latest
-    envVars:
-      - key: CHROMA_ALLOW_RESET
-        value: "true"
-    disk:
-      name: chroma-data
-      mountPath: /data
-      sizeGB: 10
 
   - type: web
     name: english-academy-n8n
