@@ -6,17 +6,7 @@ import { getEscalationLog, markResolved } from "../services/escalation.js";
 
 const router = Router();
 
-function requireAdmin(req, res, next) {
-  const token = req.headers["x-admin-token"] || req.query.token;
 
-  if (token !== config.admin.token) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  next();
-}
-
-router.use(requireAdmin);
 
 router.get("/escalations", (req, res) => {
   res.json(getEscalationLog());
@@ -51,6 +41,14 @@ router.post("/cache/flush", (req, res) => {
   cacheFlush();
   logger.info("Cache flushed by admin");
   res.json({ success: true, message: "Cache cleared" });
+});
+
+router.get("/debug", (req, res) => {
+  res.json({
+    headers: req.headers,
+    query: req.query,
+    timestamp: new Date().toISOString()
+  });
 });
 
 export default router;

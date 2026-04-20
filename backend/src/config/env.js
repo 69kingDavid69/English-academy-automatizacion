@@ -83,7 +83,7 @@ export const config = {
     threshold: parseFloat(process.env.ESCALATION_THRESHOLD || "0.40"),
   },
   admin: {
-    token: process.env.ADMIN_TOKEN || "change-me",
+    token: process.env.ADMIN_TOKEN || "",
   },
   rateLimit: {
     max: parseInt(process.env.RATE_LIMIT_MAX || "30", 10),

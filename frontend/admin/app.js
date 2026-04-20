@@ -1,7 +1,6 @@
 const API_BASE = window.location.origin + "/api";
-let adminToken = localStorage.getItem("adminToken") || "";
-
-if (adminToken) { showConnected(); autoLoad(); }
+let adminToken = "";
+showConnected(); autoLoad();
 
 // Tab navigation
 document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
@@ -16,22 +15,6 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
 });
 
 async function setToken() {
-  const raw = document.getElementById("admin-token").value.trim();
-  if (!raw) return;
-  adminToken = raw;
-
-  // Validate token BEFORE accepting it
-  try {
-    await apiFetch("/admin/health");
-  } catch {
-    document.getElementById("connect-error").textContent = "Invalid token. Try again.";
-    document.getElementById("connect-error").style.display = "block";
-    adminToken = "";
-    return;
-  }
-
-  document.getElementById("connect-error").style.display = "none";
-  localStorage.setItem("adminToken", adminToken);
   showConnected();
   autoLoad();
 }

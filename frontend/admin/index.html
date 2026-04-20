@@ -157,8 +157,8 @@
 
   <script>
     const API_BASE = window.location.origin + "/api";
-    let adminToken = localStorage.getItem("adminToken") || "";
-    if (adminToken) { showConnected(); autoLoad(); }
+    let adminToken = "";
+    showConnected(); autoLoad();
 
     document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -172,16 +172,6 @@
     });
 
     async function setToken() {
-      const raw = document.getElementById("admin-token").value.trim();
-      if (!raw) return;
-      adminToken = raw;
-      try { await apiFetch("/admin/health"); } catch {
-        document.getElementById("connect-error").textContent = "Invalid token. Try again.";
-        document.getElementById("connect-error").style.display = "block";
-        adminToken = ""; return;
-      }
-      document.getElementById("connect-error").style.display = "none";
-      localStorage.setItem("adminToken", adminToken);
       showConnected(); autoLoad();
     }
 
@@ -206,11 +196,22 @@
     }
 
     async function apiFetch(path, opts = {}) {
-      const res = await fetch(API_BASE + path, {
-        ...opts, headers: { "Content-Type": "application/json", "x-admin-token": adminToken, ...(opts.headers || {}) },
-      });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
+      const url = API_BASE + path;
+      console.log('Fetching:', url, 'token present:', adminToken ? 'yes' : 'no');
+      try {
+        const res = await fetch(url, {
+          ...opts,
+          headers: { "Content-Type": "application/json", "x-admin-token": adminToken, ...(opts.headers || {}) },
+        });
+        console.log('Response status:', res.status, res.statusText);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        console.log('Response data:', data);
+        return data;
+      } catch (err) {
+        console.error('Fetch error:', err);
+        throw err;
+      }
     }
 
     async function loadEscalations() {

@@ -16,13 +16,15 @@ app.set("trust proxy", 1);
 
 // Security middleware
 app.use(helmet({
+  // Disable HSTS in development so http://localhost links are not upgraded to https://
+  hsts: config.server.env === "production",
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      connectSrc: ["'self'", "https:"],
+      connectSrc: ["'self'", "http:", "https:"],
     },
   },
 }));
@@ -54,10 +56,12 @@ app.use("/assets/site", express.static(paths.siteDir));
 
 // HTML pages
 app.get("/admin", (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.sendFile(`${paths.adminDir}/index.html`);
 });
 
 app.get("/widget", (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.sendFile(`${paths.widgetDir}/index.html`);
 });
 

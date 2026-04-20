@@ -28,6 +28,15 @@ const UNCERTAINTY_PHRASES = [
   "i'd recommend checking",
 ];
 
+// Phrases that indicate the query is off-topic / outside the academy's scope
+const OFF_TOPIC_PHRASES = [
+  "i can only help with questions about our academy",
+  "i can only help with questions about the academy",
+  "solo puedo ayudar con preguntas sobre nuestra academia",
+  "solo puedo ayudarte con preguntas sobre la academia",
+  "solo puedo ayudar con preguntas relacionadas",
+];
+
 // Phrases the prompt instructs the LLM to use for explicit escalation
 const ESCALATION_MARKERS = ["ESCALATE:", "escalate:"];
 
@@ -93,7 +102,17 @@ export function evaluateEscalation(reply, retrievalStats) {
     };
   }
 
-  // Signal 6: Malformed or empty response
+  // Signal 6: Off-topic query — LLM correctly rejected, but should still escalate
+  const offTopicPhrase = OFF_TOPIC_PHRASES.find((p) => replyLower.includes(p));
+  if (offTopicPhrase) {
+    return {
+      escalate: true,
+      reason: "off_topic",
+      detail: `Query is outside academy scope: "${offTopicPhrase}"`,
+    };
+  }
+
+  // Signal 7: Malformed or empty response
   if (!reply || reply.trim().length < 20) {
     return {
       escalate: true,
