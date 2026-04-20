@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academy Support Chat</title>
+  <link rel="stylesheet" href="/widget/style.css" />
+</head>
+<body>
+
+  <!-- Floating trigger button -->
+  <button class="chat-trigger" id="chat-trigger" aria-label="Open support chat">
+    <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+    <span class="unread-dot" id="unread-dot" style="display:none"></span>
+  </button>
+
+  <!-- Chat window -->
+  <div class="chat-window" id="chat-window" aria-hidden="true">
+    <header class="chat-header">
+      <div class="agent-info">
+        <div class="agent-avatar">AS</div>
+        <div>
+          <div class="agent-name">Academy Assistant</div>
+          <div class="agent-status">
+            <span class="online-dot"></span> Online
+          </div>
+        </div>
+      </div>
+      <button class="close-btn" id="close-btn" aria-label="Close chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="messages" id="messages">
+      <div class="message bot">
+        <div class="bubble">
+          Welcome! I'm here to help you with information about our English courses, pricing, schedules, and enrollment. What would you like to know?
+        </div>
+        <time class="msg-time">Just now</time>
+      </div>
+    </div>
+
+    <div class="typing-indicator" id="typing-indicator" style="display:none">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+
+    <div class="escalation-notice" id="escalation-notice" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      A human advisor has been notified and will follow up with you.
+    </div>
+
+    <footer class="chat-footer">
+      <div class="input-row">
+        <input
+          type="text"
+          id="user-input"
+          placeholder="Type your question..."
+          autocomplete="off"
+          maxlength="400"
+        />
+        <button class="send-btn" id="send-btn" aria-label="Send message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="powered-by">Powered by Academy AI</div>
+    </footer>
+  </div>
+
+  <script src="/widget/widget.js"></script>
+</body>
+</html>

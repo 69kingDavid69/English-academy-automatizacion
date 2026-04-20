@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academy Support - Admin Dashboard</title>
+  <link rel="stylesheet" href="/admin/style.css" />
+</head>
+<body>
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-mark">AS</div>
+        <span class="logo-text">Admin Panel</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="escalations">
+          <span class="nav-icon">!</span>
+          Escalations
+          <span class="badge" id="escalation-badge">0</span>
+        </button>
+        <button class="nav-item" data-tab="health">
+          <span class="nav-icon">+</span>
+          System Health
+        </button>
+        <button class="nav-item" data-tab="test">
+          <span class="nav-icon">></span>
+          Test Query
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="auth-form" id="auth-form">
+          <input type="password" id="admin-token" placeholder="Admin token"
+            onkeydown="if(event.key==='Enter') setToken()" />
+          <button onclick="setToken()">Connect</button>
+          <span id="connect-error" style="display:none;color:#e05252;font-size:11px;margin-top:2px"></span>
+        </div>
+        <div class="auth-status" id="auth-status" style="display:none">
+          <span class="status-dot connected"></span> Connected
+          <button class="link-btn" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+
+      <!-- Escalations Tab -->
+      <section class="tab-panel active" id="tab-escalations">
+        <div class="panel-header">
+          <h1>Escalations</h1>
+          <div class="header-actions">
+            <label class="toggle-label">
+              <input type="checkbox" id="show-resolved" onchange="loadEscalations()" />
+              Show resolved
+            </label>
+            <button class="btn btn-secondary" onclick="loadEscalations()">Refresh</button>
+          </div>
+        </div>
+        <div class="escalation-list" id="escalation-list">
+          <div class="empty-state">Connect with your admin token to view escalations.</div>
+        </div>
+      </section>
+
+      <!-- Health Tab -->
+      <section class="tab-panel" id="tab-health">
+        <div class="panel-header">
+          <h1>System Health</h1>
+          <button class="btn btn-secondary" onclick="loadHealth()">Refresh</button>
+        </div>
+        <div class="health-grid" id="health-grid">
+          <div class="empty-state">Connect with your admin token to view system health.</div>
+        </div>
+      </section>
+
+      <!-- Test Query Tab -->
+      <section class="tab-panel" id="tab-test">
+        <div class="panel-header">
+          <h1>Test RAG Query</h1>
+        </div>
+        <div class="test-panel">
+          <div class="test-input-row">
+            <input
+              type="text"
+              id="test-message"
+              placeholder="Type a test message..."
+              onkeydown="if(event.key==='Enter') sendTest()"
+            />
+            <button class="btn btn-primary" onclick="sendTest()">Send</button>
+          </div>
+          <div class="test-output" id="test-output"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/admin/app.js"></script>
+</body>
+</html>

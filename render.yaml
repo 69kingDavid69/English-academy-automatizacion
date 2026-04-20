@@ -1,0 +1,121 @@
+services:
+  - type: web
+    name: english-academy-backend
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek-chat
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_MODE
+        value: webhook
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: CHROMA_HOST
+        fromService:
+          type: pserv
+          name: english-academy-chromadb
+          property: host
+      - key: CHROMA_PORT
+        fromService:
+          type: pserv
+          name: english-academy-chromadb
+          property: port
+      - key: CHROMA_COLLECTION
+        value: academy_knowledge
+      - key: RAG_SIMILARITY_THRESHOLD
+        value: "0.52"
+      - key: RAG_TOP_K
+        value: "4"
+      - key: CHUNK_SIZE
+        value: "800"
+      - key: CHUNK_OVERLAP
+        value: "150"
+      - key: AUTO_INGEST_ON_BOOT
+        value: "true"
+      - key: ESCALATION_CHAT_ID
+        sync: false
+      - key: ESCALATION_THRESHOLD
+        value: "0.48"
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: RATE_LIMIT_MAX
+        value: "30"
+      - key: LOG_LEVEL
+        value: info
+
+  - type: pserv
+    name: english-academy-chromadb
+    runtime: image
+    plan: starter
+    image:
+      url: docker.io/chromadb/chroma:latest
+    envVars:
+      - key: CHROMA_ALLOW_RESET
+        value: "true"
+    disk:
+      name: chroma-data
+      mountPath: /data
+      sizeGB: 10
+
+  - type: web
+    name: english-academy-n8n
+    runtime: image
+    plan: starter
+    image:
+      url: docker.io/n8nio/n8n:latest
+    envVars:
+      - key: PORT
+        value: "5678"
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_DATABASE
+        fromDatabase:
+          name: english-academy-n8n-db
+          property: database
+      - key: DB_POSTGRESDB_HOST
+        fromDatabase:
+          name: english-academy-n8n-db
+          property: host
+      - key: DB_POSTGRESDB_PASSWORD
+        fromDatabase:
+          name: english-academy-n8n-db
+          property: password
+      - key: DB_POSTGRESDB_USER
+        fromDatabase:
+          name: english-academy-n8n-db
+          property: user
+      - key: BACKEND_HOSTPORT
+        fromService:
+          type: web
+          name: english-academy-backend
+          property: hostport
+      - key: BACKEND_BASE_URL
+        fromService:
+          type: web
+          name: english-academy-backend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: N8N_BLOCK_ENV_ACCESS_IN_NODE
+        value: "false"
+      - key: WEBHOOK_URL
+        sync: false
+      - key: N8N_EDITOR_BASE_URL
+        sync: false
+      - key: GENERIC_TIMEZONE
+        value: America/Bogota
+      - key: TZ
+        value: America/Bogota
+
+databases:
+  - name: english-academy-n8n-db
+    plan: basic-256mb

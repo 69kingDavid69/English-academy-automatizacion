@@ -1,0 +1,44 @@
+Language Academy - Courses, Schedules, and Levels
+
+1. Course Levels
+
+The academy follows the CEFR standard:
+
+- A1: Beginner
+- A2: Elementary
+- B1: Intermediate
+- B2: Upper Intermediate
+- C1: Advanced
+- C2: Proficiency
+
+2. Course Modalities
+
+- Online (live classes via video)
+- In-person (at academy facilities)
+- Hybrid (combination of both)
+
+3. Class Schedules
+
+Weekday Schedule:
+- Morning: 8:00 AM - 10:00 AM
+- Afternoon: 2:00 PM - 4:00 PM
+- Evening: 6:00 PM - 8:00 PM
+
+Weekend Schedule:
+- Saturday: 9:00 AM - 1:00 PM
+
+4. Duration
+
+- Each level lasts 8 weeks
+- Classes are held 3 times per week
+
+5. Placement Test
+
+- Required for non-beginner students
+- Conducted online
+- Determines appropriate level
+
+6. Attendance Policy
+
+- Minimum 80% attendance required
+- Missing more than 20% may result in failing the level
