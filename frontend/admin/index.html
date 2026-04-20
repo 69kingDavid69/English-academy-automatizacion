@@ -4,12 +4,80 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Academy Support - Admin Dashboard</title>
-  <link rel="stylesheet" href="/assets/admin/style.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --surface-raised: #222638; --border: #2a2d3e; --text: #e8eaf0; --text-muted: #7b7f96; --accent: #4f6ef7; --accent-hover: #3d5ae0; --danger: #e05252; --success: #3ecf8e; --warning: #f5a623; --radius: 8px; --sidebar-w: 220px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; }
+    .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 18px 16px; border-bottom: 1px solid var(--border); }
+    .logo-mark { width: 32px; height: 32px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff; flex-shrink: 0; }
+    .logo-text { font-weight: 600; font-size: 14px; color: var(--text); }
+    .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius); background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; text-align: left; transition: background 0.15s, color 0.15s; width: 100%; }
+    .nav-item:hover { background: var(--surface-raised); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-icon { width: 18px; text-align: center; font-weight: 700; flex-shrink: 0; }
+    .badge { margin-left: auto; background: var(--danger); color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 600; display: none; }
+    .badge.visible { display: inline-block; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+    .auth-form { display: flex; flex-direction: column; gap: 6px; }
+    .auth-form input { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 7px 10px; font-size: 12px; width: 100%; }
+    .auth-form input:focus { outline: none; border-color: var(--accent); }
+    .auth-form button { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 7px; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .auth-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+    .status-dot.connected { background: var(--success); }
+    .link-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; margin-left: auto; text-decoration: underline; }
+    .main-content { margin-left: var(--sidebar-w); flex: 1; padding: 28px; overflow-y: auto; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .panel-header h1 { font-size: 20px; font-weight: 600; color: var(--text); }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+    .btn { padding: 7px 14px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--surface-raised); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-danger { background: var(--danger); color: #fff; font-size: 12px; padding: 4px 10px; }
+    .btn-success { background: var(--success); color: #000; font-size: 12px; padding: 4px 10px; font-weight: 600; }
+    .escalation-list { display: flex; flex-direction: column; gap: 12px; }
+    .escalation-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .escalation-card.resolved { opacity: 0.55; border-color: transparent; }
+    .esc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .esc-channel { background: var(--surface-raised); color: var(--text-muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .esc-user { font-weight: 600; font-size: 13px; }
+    .esc-time { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+    .esc-message { background: var(--bg); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; font-size: 13px; border-left: 3px solid var(--accent); }
+    .esc-reply { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+    .esc-meta { display: flex; align-items: center; gap: 10px; }
+    .confidence-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .confidence-bar { height: 100%; border-radius: 2px; background: var(--danger); transition: width 0.3s; }
+    .confidence-label { font-size: 11px; color: var(--text-muted); min-width: 60px; }
+    .health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .health-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .health-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 6px; }
+    .health-card-value { font-size: 24px; font-weight: 700; color: var(--text); }
+    .health-card-unit { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+    .test-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .test-input-row { display: flex; gap: 10px; padding: 16px; border-bottom: 1px solid var(--border); }
+    .test-input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 9px 12px; font-size: 14px; }
+    .test-input-row input:focus { outline: none; border-color: var(--accent); }
+    .test-output { padding: 16px; min-height: 200px; display: flex; flex-direction: column; gap: 12px; }
+    .test-result { background: var(--bg); border-radius: var(--radius); padding: 14px; }
+    .test-result-query { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    .test-result-reply { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+    .test-result-meta { display: flex; gap: 14px; font-size: 11px; color: var(--text-muted); }
+    .meta-item.escalated { color: var(--danger); }
+    .meta-item.ok { color: var(--success); }
+    .empty-state { color: var(--text-muted); text-align: center; padding: 48px 16px; font-size: 14px; }
+    .loader { color: var(--text-muted); text-align: center; padding: 24px; font-size: 13px; }
+  </style>
 </head>
 <body>
   <div class="layout">
-
-    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo-mark">AS</div>
@@ -44,10 +112,7 @@
       </div>
     </aside>
 
-    <!-- Main content -->
     <main class="main-content">
-
-      <!-- Escalations Tab -->
       <section class="tab-panel active" id="tab-escalations">
         <div class="panel-header">
           <h1>Escalations</h1>
@@ -64,7 +129,6 @@
         </div>
       </section>
 
-      <!-- Health Tab -->
       <section class="tab-panel" id="tab-health">
         <div class="panel-header">
           <h1>System Health</h1>
@@ -75,28 +139,149 @@
         </div>
       </section>
 
-      <!-- Test Query Tab -->
       <section class="tab-panel" id="tab-test">
         <div class="panel-header">
           <h1>Test RAG Query</h1>
         </div>
         <div class="test-panel">
           <div class="test-input-row">
-            <input
-              type="text"
-              id="test-message"
-              placeholder="Type a test message..."
-              onkeydown="if(event.key==='Enter') sendTest()"
-            />
+            <input type="text" id="test-message" placeholder="Type a test message..."
+              onkeydown="if(event.key==='Enter') sendTest()" />
             <button class="btn btn-primary" onclick="sendTest()">Send</button>
           </div>
           <div class="test-output" id="test-output"></div>
         </div>
       </section>
-
     </main>
   </div>
 
-  <script src="/assets/admin/app.js"></script>
+  <script>
+    const API_BASE = window.location.origin + "/api";
+    let adminToken = localStorage.getItem("adminToken") || "";
+    if (adminToken) { showConnected(); autoLoad(); }
+
+    document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+        if (btn.dataset.tab === "escalations") loadEscalations();
+        if (btn.dataset.tab === "health") loadHealth();
+      });
+    });
+
+    async function setToken() {
+      const raw = document.getElementById("admin-token").value.trim();
+      if (!raw) return;
+      adminToken = raw;
+      try { await apiFetch("/admin/health"); } catch {
+        document.getElementById("connect-error").textContent = "Invalid token. Try again.";
+        document.getElementById("connect-error").style.display = "block";
+        adminToken = ""; return;
+      }
+      document.getElementById("connect-error").style.display = "none";
+      localStorage.setItem("adminToken", adminToken);
+      showConnected(); autoLoad();
+    }
+
+    function autoLoad() { switchTab("health"); loadHealth(); loadEscalations(); }
+
+    function switchTab(name) {
+      document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      document.querySelector('.nav-item[data-tab="' + name + '"]').classList.add("active");
+      document.getElementById("tab-" + name).classList.add("active");
+    }
+
+    function showConnected() {
+      document.getElementById("auth-form").style.display = "none";
+      document.getElementById("auth-status").style.display = "flex";
+    }
+
+    function logout() {
+      adminToken = ""; localStorage.removeItem("adminToken");
+      document.getElementById("auth-form").style.display = "flex";
+      document.getElementById("auth-status").style.display = "none";
+    }
+
+    async function apiFetch(path, opts = {}) {
+      const res = await fetch(API_BASE + path, {
+        ...opts, headers: { "Content-Type": "application/json", "x-admin-token": adminToken, ...(opts.headers || {}) },
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }
+
+    async function loadEscalations() {
+      const list = document.getElementById("escalation-list");
+      const showResolved = document.getElementById("show-resolved").checked;
+      list.innerHTML = '<div class="loader">Loading...</div>';
+      try {
+        let data = await apiFetch("/admin/escalations");
+        if (!showResolved) data = data.filter((e) => !e.resolved);
+        const badge = document.getElementById("escalation-badge");
+        const pending = data.filter((e) => !e.resolved).length;
+        badge.textContent = pending; badge.classList.toggle("visible", pending > 0);
+        if (data.length === 0) { list.innerHTML = '<div class="empty-state">No escalations found.</div>'; return; }
+        list.innerHTML = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((e) => renderEscalation(e)).join("");
+      } catch { list.innerHTML = '<div class="empty-state">Could not load escalations. Check your token.</div>'; }
+    }
+
+    function renderEscalation(e) {
+      const sim = e.similarity != null ? Math.round(e.similarity * 100) : 0;
+      const barColor = sim < 40 ? "#e05252" : sim < 60 ? "#f5a623" : "#3ecf8e";
+      const time = new Date(e.timestamp).toLocaleString();
+      return '<div class="escalation-card ' + (e.resolved ? "resolved" : "") + '" id="esc-' + e.id + '">' +
+        '<div class="esc-header"><span class="esc-channel">' + e.channel + '</span><span class="esc-user">' + (e.username || e.userId) + '</span><span class="esc-time">' + time + '</span></div>' +
+        '<div class="esc-message">"' + escHtml(e.userMessage) + '"</div>' +
+        '<div class="esc-reply">Bot replied: ' + escHtml(e.botReply || "\u2014") + '</div>' +
+        '<div class="esc-meta"><span class="confidence-label">Confidence: ' + sim + '%</span>' +
+        '<div class="confidence-bar-wrap"><div class="confidence-bar" style="width:' + sim + '%;background:' + barColor + '"></div></div>' +
+        (e.resolved ? '<span style="color:#3ecf8e;font-size:12px">Resolved</span>' : '<button class="btn btn-success" onclick="resolve(\'' + e.id + '\')">Mark resolved</button>') +
+        '</div></div>';
+    }
+
+    async function resolve(id) {
+      try { await apiFetch("/admin/escalations/" + id + "/resolve", { method: "POST" }); loadEscalations(); }
+      catch { alert("Failed to resolve escalation."); }
+    }
+
+    async function loadHealth() {
+      const grid = document.getElementById("health-grid");
+      grid.innerHTML = '<div class="loader">Loading...</div>';
+      try {
+        const data = await apiFetch("/admin/health");
+        grid.innerHTML =
+          '<div class="health-card"><div class="health-card-label">Status</div><div class="health-card-value" style="color:#3ecf8e">' + data.status.toUpperCase() + '</div></div>' +
+          '<div class="health-card"><div class="health-card-label">Uptime</div><div class="health-card-value">' + formatUptime(data.uptime) + '</div></div>' +
+          '<div class="health-card"><div class="health-card-label">Memory</div><div class="health-card-value">' + data.memoryMB + '<span class="health-card-unit"> MB</span></div></div>' +
+          '<div class="health-card"><div class="health-card-label">Last check</div><div class="health-card-value" style="font-size:14px">' + new Date(data.timestamp).toLocaleTimeString() + '</div></div>';
+      } catch { grid.innerHTML = '<div class="empty-state">Could not load health data. Check your token.</div>'; }
+    }
+
+    function formatUptime(s) { return Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m"; }
+
+    async function sendTest() {
+      const input = document.getElementById("test-message");
+      const output = document.getElementById("test-output");
+      const message = input.value.trim(); if (!message) return;
+      input.value = "";
+      const ph = document.createElement("div"); ph.className = "loader"; ph.textContent = "Querying..."; output.prepend(ph);
+      try {
+        const data = await fetch(API_BASE + "/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "admin-test", message, channel: "admin-ui" }) }).then((r) => r.json());
+        ph.remove();
+        const card = document.createElement("div"); card.className = "test-result";
+        card.innerHTML = '<div class="test-result-query">Query: "' + escHtml(message) + '"</div>' +
+          '<div class="test-result-reply">' + escHtml(data.reply) + '</div>' +
+          '<div class="test-result-meta"><span class="meta-item ' + (data.escalated ? "escalated" : "ok") + '">' + (data.escalated ? "Escalated" : "Answered") + '</span>' +
+          '<span class="meta-item">Confidence: ' + (data.confidence != null ? Math.round(data.confidence * 100) + "%" : "N/A") + '</span>' +
+          '<span class="meta-item">' + data.latencyMs + 'ms</span></div>';
+        output.prepend(card);
+      } catch (err) { ph.textContent = "Error: " + err.message; }
+    }
+
+    function escHtml(str) { return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  </script>
 </body>
 </html>

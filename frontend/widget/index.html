@@ -4,11 +4,53 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Academy Support Chat</title>
-  <link rel="stylesheet" href="/assets/widget/style.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: #4f6ef7; --accent-dark: #3d5ae0; --bg: #ffffff; --surface: #f5f6fa; --text: #1a1d27; --text-muted: #7b7f96; --border: #e4e6ef; --bot-bubble: #f0f2ff; --user-bubble: #4f6ef7; --danger: #e05252; --success: #3ecf8e; --radius: 12px; --shadow: 0 8px 32px rgba(0,0,0,0.18); }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    .chat-trigger { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(79,110,247,0.45); z-index: 1000; transition: transform 0.2s, box-shadow 0.2s; color: #fff; }
+    .chat-trigger:hover { transform: scale(1.07); box-shadow: 0 6px 20px rgba(79,110,247,0.55); }
+    .chat-trigger svg { width: 22px; height: 22px; }
+    .unread-dot { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; background: var(--danger); border-radius: 50%; border: 2px solid #fff; }
+    .chat-window { position: fixed; bottom: 92px; right: 24px; width: 360px; height: 520px; background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 999; transform: translateY(20px) scale(0.97); opacity: 0; pointer-events: none; transition: transform 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.22s; overflow: hidden; }
+    .chat-window.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: all; }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--accent); color: #fff; border-radius: var(--radius) var(--radius) 0 0; }
+    .agent-info { display: flex; align-items: center; gap: 10px; }
+    .agent-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+    .agent-name { font-weight: 600; font-size: 14px; }
+    .agent-status { display: flex; align-items: center; gap: 4px; font-size: 11px; opacity: 0.85; }
+    .online-dot { width: 7px; height: 7px; border-radius: 50%; background: #7effc0; }
+    .close-btn { background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; transition: background 0.15s; }
+    .close-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .message { display: flex; flex-direction: column; max-width: 82%; }
+    .message.user { align-self: flex-end; align-items: flex-end; }
+    .message.bot { align-self: flex-start; align-items: flex-start; }
+    .bubble { padding: 10px 13px; border-radius: 14px; font-size: 13.5px; line-height: 1.5; word-wrap: break-word; }
+    .message.bot .bubble { background: var(--bot-bubble); color: var(--text); border-bottom-left-radius: 4px; }
+    .message.user .bubble { background: var(--user-bubble); color: #fff; border-bottom-right-radius: 4px; }
+    .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 3px; padding: 0 4px; }
+    .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 10px 16px; background: var(--bg); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0.4; animation: typing 1.2s ease-in-out infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing { 0%, 60%, 100% { opacity: 0.4; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+    .escalation-notice { display: flex; align-items: center; gap: 7px; padding: 8px 14px; background: #fff7ed; border-top: 1px solid #fed7aa; font-size: 12px; color: #92400e; }
+    .chat-footer { border-top: 1px solid var(--border); background: var(--bg); padding: 10px 12px 6px; }
+    .input-row { display: flex; gap: 8px; align-items: center; }
+    .input-row input { flex: 1; border: 1px solid var(--border); border-radius: 20px; padding: 9px 14px; font-size: 13px; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.15s; }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--text-muted); }
+    .send-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; transition: background 0.15s; }
+    .send-btn:hover { background: var(--accent-dark); }
+    .send-btn:disabled { background: var(--border); cursor: not-allowed; }
+    .powered-by { text-align: center; font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+    @media (max-width: 420px) { .chat-window { width: calc(100vw - 16px); right: 8px; bottom: 80px; height: 70vh; } .chat-trigger { bottom: 16px; right: 16px; } }
+  </style>
 </head>
 <body>
-
-  <!-- Floating trigger button -->
   <button class="chat-trigger" id="chat-trigger" aria-label="Open support chat">
     <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -19,16 +61,13 @@
     <span class="unread-dot" id="unread-dot" style="display:none"></span>
   </button>
 
-  <!-- Chat window -->
   <div class="chat-window" id="chat-window" aria-hidden="true">
     <header class="chat-header">
       <div class="agent-info">
         <div class="agent-avatar">AS</div>
         <div>
           <div class="agent-name">Academy Assistant</div>
-          <div class="agent-status">
-            <span class="online-dot"></span> Online
-          </div>
+          <div class="agent-status"><span class="online-dot"></span> Online</div>
         </div>
       </div>
       <button class="close-btn" id="close-btn" aria-label="Close chat">
@@ -37,40 +76,27 @@
         </svg>
       </button>
     </header>
-
     <div class="messages" id="messages">
       <div class="message bot">
-        <div class="bubble">
-          Welcome! I'm here to help you with information about our English courses, pricing, schedules, and enrollment. What would you like to know?
-        </div>
+        <div class="bubble">Welcome! I'm here to help you with information about our English courses, pricing, schedules, and enrollment. What would you like to know?</div>
         <time class="msg-time">Just now</time>
       </div>
     </div>
-
     <div class="typing-indicator" id="typing-indicator" style="display:none">
       <div class="dot"></div><div class="dot"></div><div class="dot"></div>
     </div>
-
     <div class="escalation-notice" id="escalation-notice" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       A human advisor has been notified and will follow up with you.
     </div>
-
     <footer class="chat-footer">
       <div class="input-row">
-        <input
-          type="text"
-          id="user-input"
-          placeholder="Type your question..."
-          autocomplete="off"
-          maxlength="400"
-        />
+        <input type="text" id="user-input" placeholder="Type your question..." autocomplete="off" maxlength="400" />
         <button class="send-btn" id="send-btn" aria-label="Send message">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>
@@ -78,6 +104,53 @@
     </footer>
   </div>
 
-  <script src="/assets/widget/widget.js"></script>
+  <script>
+    (() => {
+      const API_BASE = window.location.origin + "/api";
+      const USER_ID = "widget_" + Math.random().toString(36).slice(2, 10);
+      const trigger = document.getElementById("chat-trigger");
+      const chatWindow = document.getElementById("chat-window");
+      const closeBtn = document.getElementById("close-btn");
+      const messagesEl = document.getElementById("messages");
+      const inputEl = document.getElementById("user-input");
+      const sendBtn = document.getElementById("send-btn");
+      const typingEl = document.getElementById("typing-indicator");
+      const escalationNotice = document.getElementById("escalation-notice");
+      const unreadDot = document.getElementById("unread-dot");
+      const iconOpen = trigger.querySelector(".icon-open");
+      const iconClose = trigger.querySelector(".icon-close");
+      let isOpen = false, isSending = false;
+
+      function openChat() { isOpen = true; chatWindow.classList.add("open"); chatWindow.setAttribute("aria-hidden","false"); iconOpen.style.display="none"; iconClose.style.display="block"; unreadDot.style.display="none"; inputEl.focus(); scrollToBottom(); }
+      function closeChat() { isOpen = false; chatWindow.classList.remove("open"); chatWindow.setAttribute("aria-hidden","true"); iconOpen.style.display="block"; iconClose.style.display="none"; }
+      trigger.addEventListener("click", () => (isOpen ? closeChat() : openChat()));
+      closeBtn.addEventListener("click", closeChat);
+      sendBtn.addEventListener("click", sendMessage);
+      inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+      async function sendMessage() {
+        const text = inputEl.value.trim(); if (!text || isSending) return;
+        inputEl.value = ""; isSending = true; sendBtn.disabled = true;
+        appendMessage("user", text); showTyping(true); scrollToBottom();
+        try {
+          const res = await fetch(API_BASE + "/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: USER_ID, message: text, channel: "widget" }) });
+          const data = await res.json(); showTyping(false);
+          appendMessage("bot", data.reply || "Sorry, I couldn't process that.");
+          if (data.escalated) escalationNotice.style.display = "flex";
+          if (!isOpen) unreadDot.style.display = "block";
+        } catch { showTyping(false); appendMessage("bot", "I'm having trouble connecting right now. Please try again shortly."); }
+        finally { isSending = false; sendBtn.disabled = false; inputEl.focus(); scrollToBottom(); }
+      }
+
+      function appendMessage(role, text) {
+        const msg = document.createElement("div"); msg.className = "message " + role;
+        const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+        const time = document.createElement("time"); time.className = "msg-time"; time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        msg.appendChild(bubble); msg.appendChild(time); messagesEl.appendChild(msg); scrollToBottom();
+      }
+      function showTyping(v) { typingEl.style.display = v ? "flex" : "none"; if (v) scrollToBottom(); }
+      function scrollToBottom() { requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; }); }
+    })();
+  </script>
 </body>
 </html>
