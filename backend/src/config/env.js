@@ -56,6 +56,7 @@ export const config = {
   },
   telegram: {
     token: process.env.TELEGRAM_BOT_TOKEN,
+    adminToken: process.env.TELEGRAM_BOT_TOKEN_ADMIN || "",
     mode: process.env.TELEGRAM_MODE || "polling",
     webhookUrl: resolveTelegramWebhookUrl(),
     secret: process.env.WEBHOOK_SECRET || "default-secret",

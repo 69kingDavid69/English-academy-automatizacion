@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { processQuery } from "../services/rag.js";
 import { logEscalation, notifyHumanAgent } from "../services/escalation.js";
-import { getBot } from "./telegram.js";
+import { getBot, getAdminBot } from "./telegram.js";
 import { logger } from "../middleware/logger.js";
 
 const router = Router();
@@ -47,7 +47,8 @@ router.post("/query", async (req, res) => {
         escalationReason: result.escalationReason,
         channel,
       });
-      await notifyHumanAgent(getBot(), entry);
+      const notificationBot = getAdminBot() || getBot();
+      await notifyHumanAgent(notificationBot, entry);
     }
 
     return res.json({

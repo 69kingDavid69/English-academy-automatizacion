@@ -1,7 +1,14 @@
 import { ChromaClient } from "chromadb";
+import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
 import { pipeline } from "@xenova/transformers";
 import { config } from "../config/env.js";
 import { logger } from "../middleware/logger.js";
+
+// Disable worker threads to avoid blob URL errors
+process.env.TRANSFORMERS_CPP_NO_WORKER = '1';
+
+// Default embedding function for ChromaDB
+const defaultEmbedder = new DefaultEmbeddingFunction();
 
 let extractor = null;
 let collection = null;
@@ -9,7 +16,10 @@ let chromaClient = null;
 
 async function getExtractor() {
   if (!extractor) {
-    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+      disableWorker: true,
+      useWorkerThreads: false
+    });
   }
   return extractor;
 }
@@ -26,15 +36,17 @@ function buildChromaClient() {
 async function getCollection() {
   if (!collection) {
     chromaClient = buildChromaClient();
-    collection = await chromaClient.getCollection({ name: config.chroma.collection });
+    collection = await chromaClient.getCollection({ 
+      name: config.chroma.collection,
+      embeddingFunction: defaultEmbedder
+    });
   }
   return collection;
 }
 
 async function embedQuery(text) {
-  const model = await getExtractor();
-  const output = await model([text], { pooling: "mean", normalize: true });
-  return Array.from(output[0].data);
+  // Use ChromaDB's default embedding function
+  return await defaultEmbedder.generate([text]);
 }
 
 /**

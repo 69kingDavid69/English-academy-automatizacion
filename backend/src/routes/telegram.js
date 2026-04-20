@@ -6,12 +6,17 @@ import { logger } from "../middleware/logger.js";
 import { detectLanguage, localizedMessages } from "../utils/language.js";
 
 let bot = null;
+let adminBot = null;
 
 // Maps escalation message_id (sent to admin) → { userChatId, questionId, userMessage }
 const pendingEscalations = new Map();
 
 export function getBot() {
   return bot;
+}
+
+export function getAdminBot() {
+  return adminBot;
 }
 
 export function getPendingEscalations() {
@@ -40,6 +45,14 @@ export function setupTelegram(app) {
 
   bot.on("message", handleMessage);
   bot.on("polling_error", (err) => logger.error("Telegram polling error", { error: err.message }));
+
+  // Create admin bot for escalation notifications (no polling needed)
+  if (config.telegram.adminToken) {
+    adminBot = new TelegramBot(config.telegram.adminToken);
+    logger.info("Admin bot initialized for escalation notifications");
+  } else {
+    logger.warn("No admin bot token configured. Escalation notifications will use main bot.");
+  }
 
   return bot;
 }
@@ -108,7 +121,8 @@ async function handleMessage(msg) {
  * so that when admin replies, we can route it back to the original user.
  */
 async function sendEscalationWithMapping(entry, userChatId) {
-  if (!config.escalation.chatId || !bot) return;
+  const notificationBot = adminBot || bot;
+  if (!config.escalation.chatId || !notificationBot) return;
 
   try {
     const score = entry.retrievalStats?.topScore;
@@ -122,7 +136,7 @@ async function sendEscalationWithMapping(entry, userChatId) {
       `Time: ${entry.timestamp}\n\n` +
       `_Reply to this message to respond directly to the user._`;
 
-    const sent = await bot.sendMessage(config.escalation.chatId, text, {
+    const sent = await notificationBot.sendMessage(config.escalation.chatId, text, {
       parse_mode: "Markdown",
     });
 
