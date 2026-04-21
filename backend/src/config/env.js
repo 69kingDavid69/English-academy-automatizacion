@@ -30,6 +30,15 @@ function resolveTelegramWebhookUrl() {
   );
 }
 
+function resolveTelegramMode() {
+  const explicitMode = String(process.env.TELEGRAM_MODE || "").trim().toLowerCase();
+  if (["webhook", "polling", "none"].includes(explicitMode)) {
+    return explicitMode;
+  }
+
+  return resolveTelegramWebhookUrl() ? "webhook" : "polling";
+}
+
 function resolveChromaUrl() {
   if (process.env.CHROMA_URL) {
     return process.env.CHROMA_URL;
@@ -57,7 +66,7 @@ export const config = {
   telegram: {
     token: process.env.TELEGRAM_BOT_TOKEN,
     adminToken: process.env.TELEGRAM_BOT_TOKEN_ADMIN || "",
-    mode: process.env.TELEGRAM_MODE || "polling",
+    mode: resolveTelegramMode(),
     webhookUrl: resolveTelegramWebhookUrl(),
     secret: process.env.WEBHOOK_SECRET || "default-secret",
   },
