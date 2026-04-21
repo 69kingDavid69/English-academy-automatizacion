@@ -29,6 +29,8 @@ services:
         value: /tmp/transformers-cache
       - key: EMBEDDING_MODEL
         value: Xenova/all-MiniLM-L6-v2
+      - key: EMBEDDING_DTYPE
+        value: q8
       - key: RAG_SIMILARITY_THRESHOLD
         value: "0.45"
       - key: RAG_TOP_K

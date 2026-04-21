@@ -1,10 +1,10 @@
 import { mkdir, rm } from "fs/promises";
 import { resolve } from "path";
-import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
-import { env as transformersEnv } from "@huggingface/transformers";
+import { env as transformersEnv, pipeline } from "@huggingface/transformers";
 import { logger } from "../middleware/logger.js";
 
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "Xenova/all-MiniLM-L6-v2";
+const EMBEDDING_DTYPE = process.env.EMBEDDING_DTYPE || "q8";
 const CACHE_DIR = process.env.TRANSFORMERS_CACHE_DIR || "/tmp/transformers-cache";
 const CORRUPTED_MODEL_REGEX = /protobuf parsing failed|load model from .*model\.onnx failed/i;
 
@@ -12,34 +12,39 @@ transformersEnv.cacheDir = CACHE_DIR;
 transformersEnv.useFSCache = true;
 transformersEnv.useBrowserCache = false;
 
-let embedder = null;
+let extractor = null;
 let initPromise = null;
 
 function getModelCachePath() {
   return resolve(CACHE_DIR, EMBEDDING_MODEL);
 }
 
-function createEmbedder() {
-  return new DefaultEmbeddingFunction({ modelName: EMBEDDING_MODEL });
-}
-
-async function initializeEmbedder() {
+async function initializeExtractor() {
   await mkdir(CACHE_DIR, { recursive: true });
-  const instance = createEmbedder();
-  await instance.generate(["embedding warmup"]);
-  embedder = instance;
+
+  const instance = await pipeline("feature-extraction", EMBEDDING_MODEL, {
+    dtype: EMBEDDING_DTYPE,
+  });
+
+  await instance(["embedding warmup"], {
+    pooling: "mean",
+    normalize: true,
+  });
+
+  extractor = instance;
   logger.info("Embedding model initialized", {
     model: EMBEDDING_MODEL,
+    dtype: EMBEDDING_DTYPE,
     cacheDir: CACHE_DIR,
   });
-  return embedder;
+  return extractor;
 }
 
-async function getEmbedder() {
-  if (embedder) return embedder;
+async function getExtractor() {
+  if (extractor) return extractor;
 
   if (!initPromise) {
-    initPromise = initializeEmbedder().finally(() => {
+    initPromise = initializeExtractor().finally(() => {
       initPromise = null;
     });
   }
@@ -54,7 +59,7 @@ function isCorruptedModelError(err) {
 
 async function resetModelCache() {
   const modelCachePath = getModelCachePath();
-  embedder = null;
+  extractor = null;
   await rm(modelCachePath, { recursive: true, force: true });
   logger.warn("Deleted corrupted embedding cache", {
     model: EMBEDDING_MODEL,
@@ -63,15 +68,23 @@ async function resetModelCache() {
 }
 
 export async function warmupEmbeddings() {
-  await getEmbedder();
+  await getExtractor();
+}
+
+async function runEmbedding(texts) {
+  const model = await getExtractor();
+  const output = await model(texts, {
+    pooling: "mean",
+    normalize: true,
+  });
+  return output.tolist();
 }
 
 export async function generateEmbeddings(texts) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
   try {
-    const instance = await getEmbedder();
-    return await instance.generate(texts);
+    return await runEmbedding(texts);
   } catch (err) {
     if (!isCorruptedModelError(err)) {
       throw err;
@@ -82,7 +95,6 @@ export async function generateEmbeddings(texts) {
     });
 
     await resetModelCache();
-    const recovered = await getEmbedder();
-    return await recovered.generate(texts);
+    return await runEmbedding(texts);
   }
 }
