@@ -3,7 +3,7 @@ import { config } from "../config/env.js";
 import { processQuery } from "../services/rag.js";
 import { logEscalation } from "../services/escalation.js";
 import { logger } from "../middleware/logger.js";
-import { detectLanguage, localizedMessages } from "../utils/language.js";
+import { detectLanguage } from "../utils/language.js";
 
 function escapeHtml(text) {
   if (!text) return '';
@@ -108,7 +108,7 @@ async function handleMessage(msg) {
   try {
     const result = await processQuery({ userId, userMessage });
 
-    await bot.sendMessage(chatId, result.reply, { parse_mode: "Markdown" });
+    await bot.sendMessage(chatId, result.reply);
 
     if (result.escalate) {
       const entry = await logEscalation({
@@ -212,12 +212,10 @@ async function handleAdminReply(msg) {
 
   try {
     const responseText =
-      `*Response from our team:*\n\n${adminReply}\n\n` +
-      `_If you have more questions, feel free to ask!_`;
+      `Response from our team:\n\n${adminReply}\n\n` +
+      `If you have more questions, feel free to ask!`;
 
-    await bot.sendMessage(pending.userChatId, responseText, {
-      parse_mode: "Markdown",
-    });
+    await bot.sendMessage(pending.userChatId, responseText);
 
     // Confirm to admin that reply was delivered
     await bot.sendMessage(

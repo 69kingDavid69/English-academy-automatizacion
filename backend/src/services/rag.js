@@ -6,7 +6,7 @@ import { evaluateEscalation, extractCleanReply } from "./escalation.js";
 import { get as cacheGet, set as cacheSet, normalizeQuery } from "./cache.js";
 import { logger } from "../middleware/logger.js";
 import { config } from "../config/env.js";
-import { detectLanguage, localizedMessages } from "../utils/language.js";
+import { detectLanguage } from "../utils/language.js";
 
 // ---------------------------------------------------------------------------
 // Conversation history store
@@ -86,7 +86,9 @@ export async function processQuery({ userId, userMessage }) {
   } catch (err) {
     logger.error("Retrieval failed", { error: err.message, userId });
     const lang = detectLanguage(userMessage);
-    let errorMessage = err.message;
+    let errorMessage = lang === "es"
+      ? "Estamos teniendo problemas técnicos temporales para consultar la base de conocimientos. Un asesor te ayudará en breve."
+      : "We are having temporary technical issues accessing the knowledge base. An advisor will assist you shortly.";
     // Localize common error messages
     if (err.message.includes("Vector store unavailable")) {
       errorMessage = lang === 'es' 

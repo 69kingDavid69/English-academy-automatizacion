@@ -1,10 +1,7 @@
 import { ChromaClient } from "chromadb";
-import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
 import { config } from "../config/env.js";
 import { logger } from "../middleware/logger.js";
-
-// Default embedding function for ChromaDB
-const defaultEmbedder = new DefaultEmbeddingFunction();
+import { generateEmbeddings } from "./embeddings.js";
 
 let collection = null;
 let chromaClient = null;
@@ -77,7 +74,6 @@ async function initializeChroma() {
     collection = await retryWithBackoff(async () => {
       const col = await chromaClient.getOrCreateCollection({
         name: config.chroma.collection,
-        embeddingFunction: defaultEmbedder,
       });
       
       // Check if collection has documents
@@ -99,8 +95,7 @@ async function initializeChroma() {
 }
 
 async function embedQuery(text) {
-  // Use ChromaDB's default embedding function
-  const embeddings = await defaultEmbedder.generate([text]);
+  const embeddings = await generateEmbeddings([text]);
   const embedding = embeddings[0];
   // Ensure embedding is a flat array of numbers
   return Array.isArray(embedding) ? embedding.flat() : embedding;

@@ -1,10 +1,10 @@
 import { readdir, readFile } from "fs/promises";
 import { resolve, extname, basename } from "path";
 import { ChromaClient } from "chromadb";
-import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
 import { chunkText } from "./chunker.js";
 import { config } from "../config/env.js";
 import { paths } from "../config/paths.js";
+import { generateEmbeddings, warmupEmbeddings } from "../services/embeddings.js";
 const SUPPORTED_EXTENSIONS = [".txt", ".md"];
 
 function createLogger(logger) {
@@ -40,14 +40,13 @@ function createChromaClient() {
 }
 
 async function loadEmbeddingModel(log) {
-  log.info("Using ChromaDB default embedding function...");
-  const extractor = new DefaultEmbeddingFunction();
+  log.info("Loading embedding model...");
+  await warmupEmbeddings();
   log.info("Embedding function ready.");
-  return extractor;
 }
 
-async function embed(extractor, texts) {
-  return await extractor.generate(texts);
+async function embed(texts) {
+  return await generateEmbeddings(texts);
 }
 
 async function loadDocuments(log) {
@@ -135,13 +134,13 @@ export async function runIngestion({
     log.info(`Created collection: ${config.chroma.collection}`);
   }
 
-  const extractor = await loadEmbeddingModel(log);
+  await loadEmbeddingModel(log);
   const batchSize = 32;
 
   for (let i = 0; i < allChunks.length; i += batchSize) {
     const batch = allChunks.slice(i, i + batchSize);
     const texts = batch.map((chunk) => chunk.text);
-    const embeddings = await embed(extractor, texts);
+    const embeddings = await embed(texts);
 
     await collection.upsert({
       ids: batch.map((chunk) => chunk.id),
